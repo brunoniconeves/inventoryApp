@@ -2,8 +2,16 @@ using Microsoft.EntityFrameworkCore;
 using InventoryApp.Api.Data;
 using InventoryApp.Api.Models;
 using InventoryApp.Api.DTOs;
+using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Kestrel
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(5000);
+});
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -36,6 +44,43 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors();
 
+// Apply migrations at startup with retry mechanism
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    var db = services.GetRequiredService<ApplicationDbContext>();
+    var retryCount = 0;
+    const int maxRetries = 10;
+    const int retryDelaySeconds = 5;
+
+    while (retryCount < maxRetries)
+    {
+        try
+        {
+            logger.LogInformation("Attempting to connect to the database and apply migrations...");
+            db.Database.Migrate();
+            logger.LogInformation("Database migrations applied successfully.");
+            break;
+        }
+        catch (Exception ex) when (ex is PostgresException || ex.InnerException is PostgresException)
+        {
+            retryCount++;
+            if (retryCount >= maxRetries)
+            {
+                logger.LogError(ex, "Failed to connect to the database after {RetryCount} attempts.", maxRetries);
+                throw;
+            }
+
+            logger.LogWarning(
+                "Failed to connect to the database. Retrying in {RetryDelay} seconds... (Attempt {RetryCount} of {MaxRetries})",
+                retryDelaySeconds, retryCount, maxRetries);
+            
+            Thread.Sleep(TimeSpan.FromSeconds(retryDelaySeconds));
+        }
+    }
+}
+
 // API Endpoints
 app.MapGet("/api/products", async (ApplicationDbContext db) =>
 {
@@ -60,7 +105,7 @@ app.MapGet("/api/products/{id}", async (int id, ApplicationDbContext db) =>
 .WithName("GetProduct")
 .WithOpenApi();
 
-app.MapPost("/api/products", async (CreateProductDto productDto, ApplicationDbContext db) =>
+app.MapPost("/api/products", async ([FromBody] CreateProductDto productDto, ApplicationDbContext db) =>
 {
     var product = new Product
     {
@@ -83,7 +128,7 @@ app.MapPost("/api/products", async (CreateProductDto productDto, ApplicationDbCo
 .WithName("CreateProduct")
 .WithOpenApi();
 
-app.MapPut("/api/products/{id}", async (int id, UpdateProductDto productDto, ApplicationDbContext db) =>
+app.MapPut("/api/products/{id}", async (int id, [FromBody] UpdateProductDto productDto, ApplicationDbContext db) =>
 {
     var product = await db.Products.FindAsync(id);
     if (product == null)
@@ -118,7 +163,7 @@ app.MapDelete("/api/products/{id}", async (int id, ApplicationDbContext db) =>
 .WithName("DeleteProduct")
 .WithOpenApi();
 
-app.MapPost("/api/products/{id}/stock", async (int id, UpdateStockDto stockDto, ApplicationDbContext db) =>
+app.MapPost("/api/products/{id}/stock", async (int id, [FromBody] UpdateStockDto stockDto, ApplicationDbContext db) =>
 {
     var product = await db.Products.FindAsync(id);
     if (product == null)
@@ -136,7 +181,7 @@ app.MapPost("/api/products/{id}/stock", async (int id, UpdateStockDto stockDto, 
 .WithName("AddStock")
 .WithOpenApi();
 
-app.MapDelete("/api/products/{id}/stock", async (int id, UpdateStockDto stockDto, ApplicationDbContext db) =>
+app.MapDelete("/api/products/{id}/stock", async (int id, [FromBody] UpdateStockDto stockDto, ApplicationDbContext db) =>
 {
     var product = await db.Products.FindAsync(id);
     if (product == null)
