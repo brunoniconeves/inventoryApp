@@ -3,6 +3,7 @@ using InventoryApp.Api.DTOs;
 using InventoryApp.Api.Models;
 using InventoryApp.Api.Repositories;
 using InventoryApp.Api.Services;
+using InventoryApp.Tests.Fixtures;
 using Moq;
 using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
@@ -236,7 +237,7 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
     {
         // Arrange
         _mockRepository.Setup(repo => repo.GetByIdAsync(999))
-            .ReturnsAsync((Product)null);
+            .ReturnsAsync(() => null);
 
         // Act
         var result = await _service.GetProductByIdAsync(999);
@@ -255,11 +256,11 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         var product = new Product
         {
             Id = 1,
-            Name = createDto.Name,
-            Description = createDto.Description,
+            Name = createDto.Name ?? "New Product",
+            Description = createDto.Description ?? "Description",
             Price = createDto.Price,
             StockQuantity = createDto.StockQuantity,
-            SKU = createDto.SKU,
+            SKU = createDto.SKU ?? "SKU003",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -299,11 +300,11 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         var updatedProduct = new Product
         {
             Id = productId,
-            Name = updateDto.Name,
-            Description = updateDto.Description,
+            Name = updateDto.Name ?? "Updated Product",
+            Description = updateDto.Description ?? "New Description",
             Price = updateDto.Price,
             StockQuantity = existingProduct.StockQuantity,
-            SKU = updateDto.SKU,
+            SKU = updateDto.SKU ?? "SKU001",
             CreatedAt = existingProduct.CreatedAt,
             UpdatedAt = DateTime.UtcNow
         };
@@ -327,7 +328,17 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
     {
         // Arrange
         var productId = 1;
-        var existingProduct = new Product { Id = productId };
+        var existingProduct = new Product 
+        { 
+            Id = productId,
+            Name = "Test Product",
+            Description = "Test Description",
+            Price = 9.99m,
+            StockQuantity = 10,
+            SKU = "SKU001",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
 
         _mockRepository.Setup(repo => repo.GetByIdAsync(productId))
             .ReturnsAsync(existingProduct);
@@ -347,12 +358,188 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         // Arrange
         var productId = 999;
         _mockRepository.Setup(repo => repo.GetByIdAsync(productId))
-            .ReturnsAsync((Product)null);
+            .ReturnsAsync(() => null);
 
         // Act
         var result = await _service.DeleteProductAsync(productId);
 
         // Assert
         Assert.False(result);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_WithInvalidName_ThrowsArgumentException()
+    {
+        // Arrange
+        var invalidProduct = new CreateProductDto(
+            "", "Description", 9.99m, 10, "SKU001");
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.CreateProductAsync(invalidProduct));
+        Assert.Equal("Product name is required", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_WithInvalidPrice_ThrowsArgumentException()
+    {
+        // Arrange
+        var invalidProduct = new CreateProductDto(
+            "Test Product", "Description", -1m, 10, "SKU001");
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.CreateProductAsync(invalidProduct));
+        Assert.Equal("Product price must be greater than zero", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreateProductAsync_WithNegativeStock_ThrowsArgumentException()
+    {
+        // Arrange
+        var invalidProduct = new CreateProductDto(
+            "Test Product", "Description", 9.99m, -1, "SKU001");
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.CreateProductAsync(invalidProduct));
+        Assert.Equal("Product stock quantity cannot be negative", exception.Message);
+    }
+
+    [Fact]
+    public async Task AddStockAsync_WithValidQuantity_UpdatesStock()
+    {
+        // Arrange
+        var productId = 1;
+        var stockDto = new UpdateStockDto(10);
+        var existingProduct = new Product
+        {
+            Id = productId,
+            Name = "Test Product",
+            Description = "Description",
+            Price = 9.99m,
+            StockQuantity = 5,
+            SKU = "SKU001",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var updatedProduct = new Product
+        {
+            Id = productId,
+            Name = existingProduct.Name,
+            Description = existingProduct.Description,
+            Price = existingProduct.Price,
+            StockQuantity = existingProduct.StockQuantity + stockDto.Quantity,
+            SKU = existingProduct.SKU,
+            CreatedAt = existingProduct.CreatedAt,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockRepository.Setup(repo => repo.UpdateStockAsync(productId, stockDto.Quantity))
+            .ReturnsAsync(updatedProduct);
+
+        // Act
+        var result = await _service.AddStockAsync(productId, stockDto);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(15, result.StockQuantity);
+    }
+
+    [Fact]
+    public async Task AddStockAsync_WithNegativeQuantity_ThrowsArgumentException()
+    {
+        // Arrange
+        var productId = 1;
+        var stockDto = new UpdateStockDto(-5);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.AddStockAsync(productId, stockDto));
+        Assert.Equal("Quantity must be positive when adding stock", exception.Message);
+    }
+
+    [Fact]
+    public async Task RemoveStockAsync_WithValidQuantity_UpdatesStock()
+    {
+        // Arrange
+        var productId = 1;
+        var stockDto = new UpdateStockDto(5);
+        var existingProduct = new Product
+        {
+            Id = productId,
+            Name = "Test Product",
+            Description = "Description",
+            Price = 9.99m,
+            StockQuantity = 10,
+            SKU = "SKU001",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var updatedProduct = new Product
+        {
+            Id = productId,
+            Name = existingProduct.Name,
+            Description = existingProduct.Description,
+            Price = existingProduct.Price,
+            StockQuantity = existingProduct.StockQuantity - stockDto.Quantity,
+            SKU = existingProduct.SKU,
+            CreatedAt = existingProduct.CreatedAt,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockRepository.Setup(repo => repo.UpdateStockAsync(productId, -stockDto.Quantity))
+            .ReturnsAsync(updatedProduct);
+
+        // Act
+        var result = await _service.RemoveStockAsync(productId, stockDto);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(5, result.StockQuantity);
+    }
+
+    [Fact]
+    public async Task RemoveStockAsync_WithNegativeQuantity_ThrowsArgumentException()
+    {
+        // Arrange
+        var productId = 1;
+        var stockDto = new UpdateStockDto(-5);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.RemoveStockAsync(productId, stockDto));
+        Assert.Equal("Quantity must be positive when removing stock", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_WithInvalidPrice_ThrowsArgumentException()
+    {
+        // Arrange
+        var productId = 1;
+        var existingProduct = new Product
+        {
+            Id = productId,
+            Name = "Old Name",
+            Description = "Old Description",
+            Price = 29.99m,
+            StockQuantity = 10,
+            SKU = "SKU001",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var invalidUpdate = new UpdateProductDto(
+            "Test Product", "Description", -1m, "SKU001");
+
+        _mockRepository.Setup(repo => repo.GetByIdAsync(productId))
+            .ReturnsAsync(existingProduct);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.UpdateProductAsync(productId, invalidUpdate));
+        Assert.Equal("Product price must be greater than zero", exception.Message);
     }
 } 

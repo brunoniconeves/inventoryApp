@@ -4,6 +4,7 @@ using InventoryApp.Api.DTOs;
 using InventoryApp.Api.Services;
 using InventoryApp.Tests.Fixtures;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -74,7 +75,7 @@ public class ProductsControllerTests
         var productId = 999;
         _mockProductService
             .Setup(service => service.GetProductByIdAsync(productId))
-            .ReturnsAsync((ProductDto)null);
+            .ReturnsAsync(() => null);
 
         // Act
         var result = await _controller.GetProduct(productId);
@@ -162,5 +163,133 @@ public class ProductsControllerTests
 
         // Assert
         Assert.IsType<NotFoundResult>(result);
+    }
+
+    [Fact]
+    public async Task GetProducts_WhenExceptionOccurs_ReturnsInternalServerError()
+    {
+        // Arrange
+        _mockProductService
+            .Setup(service => service.GetAllProductsAsync())
+            .ThrowsAsync(new Exception("Test exception"));
+
+        // Act
+        var result = await _controller.GetProducts();
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+        Assert.Equal("An error occurred while retrieving products", statusCodeResult.Value);
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateProduct_WithInvalidData_ReturnsBadRequest()
+    {
+        // Arrange
+        var invalidProduct = new CreateProductDto(
+            "", "", -1m, -1, "");
+        
+        _mockProductService
+            .Setup(service => service.CreateProductAsync(invalidProduct))
+            .ThrowsAsync(new ArgumentException("Product validation failed"));
+
+        // Act
+        var result = await _controller.CreateProduct(invalidProduct);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Product validation failed", badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task AddStock_WithValidData_ReturnsOkResult()
+    {
+        // Arrange
+        var productId = 1;
+        var stockDto = new UpdateStockDto(10);
+        var updatedProduct = new ProductDto(
+            productId, "Test Product", "Description", 9.99m, 20, "SKU001", 
+            DateTime.UtcNow, DateTime.UtcNow);
+
+        _mockProductService
+            .Setup(service => service.AddStockAsync(productId, stockDto))
+            .ReturnsAsync(updatedProduct);
+
+        // Act
+        var result = await _controller.AddStock(productId, stockDto);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedProduct = Assert.IsType<ProductDto>(okResult.Value);
+        Assert.Equal(20, returnedProduct.StockQuantity);
+    }
+
+    [Fact]
+    public async Task AddStock_WithInvalidQuantity_ReturnsBadRequest()
+    {
+        // Arrange
+        var productId = 1;
+        var stockDto = new UpdateStockDto(-5);
+
+        _mockProductService
+            .Setup(service => service.AddStockAsync(productId, stockDto))
+            .ThrowsAsync(new ArgumentException("Quantity must be positive when adding stock"));
+
+        // Act
+        var result = await _controller.AddStock(productId, stockDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Quantity must be positive when adding stock", badRequestResult.Value);
+    }
+
+    [Fact]
+    public async Task RemoveStock_WithValidData_ReturnsOkResult()
+    {
+        // Arrange
+        var productId = 1;
+        var stockDto = new UpdateStockDto(5);
+        var updatedProduct = new ProductDto(
+            productId, "Test Product", "Description", 9.99m, 5, "SKU001", 
+            DateTime.UtcNow, DateTime.UtcNow);
+
+        _mockProductService
+            .Setup(service => service.RemoveStockAsync(productId, stockDto))
+            .ReturnsAsync(updatedProduct);
+
+        // Act
+        var result = await _controller.RemoveStock(productId, stockDto);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedProduct = Assert.IsType<ProductDto>(okResult.Value);
+        Assert.Equal(5, returnedProduct.StockQuantity);
+    }
+
+    [Fact]
+    public async Task RemoveStock_WithInsufficientStock_ReturnsBadRequest()
+    {
+        // Arrange
+        var productId = 1;
+        var stockDto = new UpdateStockDto(15);
+
+        _mockProductService
+            .Setup(service => service.RemoveStockAsync(productId, stockDto))
+            .ThrowsAsync(new InvalidOperationException("Insufficient stock"));
+
+        // Act
+        var result = await _controller.RemoveStock(productId, stockDto);
+
+        // Assert
+        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Equal("Insufficient stock", badRequestResult.Value);
     }
 } 
