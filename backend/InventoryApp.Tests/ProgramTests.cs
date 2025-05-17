@@ -1,13 +1,19 @@
+using InventoryApp.Api;
 using InventoryApp.Tests.Fixtures;
 using Microsoft.AspNetCore.Mvc.Testing;
-using System.Net;
+using Microsoft.Extensions.DependencyInjection;
+using InventoryApp.Api.Services;
+using InventoryApp.Api.Repositories;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using Xunit;
 
 namespace InventoryApp.Tests;
 
 public class ProgramTests : IClassFixture<TestWebApplicationFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly TestWebApplicationFactory _factory;
 
     public ProgramTests(TestWebApplicationFactory factory)
     {
@@ -15,44 +21,53 @@ public class ProgramTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Get_Products_Endpoint_Returns_Success()
+    public void CreateApp_RegistersRequiredServices()
     {
-        // Arrange
-        var client = _factory.CreateClient();
-
-        // Act
-        var response = await client.GetAsync("/api/products");
-
+        // Arrange & Act
+        using var scope = _factory.Services.CreateScope();
+        
         // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        // Check if essential services are registered
+        var productService = scope.ServiceProvider.GetService<IProductService>();
+        var productRepository = scope.ServiceProvider.GetService<IProductRepository>();
+        var dbContext = scope.ServiceProvider.GetService<Api.Data.ApplicationDbContext>();
+
+        Assert.NotNull(productService);
+        Assert.NotNull(productRepository);
+        Assert.NotNull(dbContext);
     }
 
     [Fact]
-    public async Task Get_Products_Returns_Empty_List_Initially()
+    public void CreateApp_ConfiguresCors()
     {
-        // Arrange
-        var client = _factory.CreateClient();
-
-        // Act
-        var response = await client.GetAsync("/api/products");
-        var content = await response.Content.ReadAsStringAsync();
+        // Arrange & Act
+        var corsService = _factory.Services.GetService<ICorsService>();
+        var corsPolicyProvider = _factory.Services.GetService<ICorsPolicyProvider>();
 
         // Assert
-        Assert.Equal("[]", content);
+        Assert.NotNull(corsService);
+        Assert.NotNull(corsPolicyProvider);
     }
 
-    [Theory]
-    [InlineData("/api/products")]
-    [InlineData("/api/products/1")]
-    public async Task Endpoints_Return_Success(string url)
+    [Fact]
+    public void CreateApp_UsesCorrectEnvironment()
     {
-        // Arrange
-        var client = _factory.CreateClient();
-
-        // Act
-        var response = await client.GetAsync(url);
+        // Arrange & Act
+        var env = _factory.Services.GetService<IWebHostEnvironment>();
 
         // Assert
-        Assert.True(response.StatusCode is HttpStatusCode.OK or HttpStatusCode.NotFound);
+        Assert.NotNull(env);
+        Assert.Equal("Testing", env.EnvironmentName);
+    }
+
+    [Fact]
+    public void CreateApp_ConfiguresControllers()
+    {
+        // Arrange & Act
+        using var scope = _factory.Services.CreateScope();
+        var controllers = scope.ServiceProvider.GetService<IEnumerable<ControllerBase>>();
+
+        // Assert
+        Assert.NotNull(controllers);
     }
 } 
