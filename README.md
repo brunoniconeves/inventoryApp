@@ -1,2 +1,124 @@
-# inventoryApp
-This is the repository for a technical challenge for ROMtech company software engineer position.
+# Inventory Management System
+
+A full-stack application for managing inventory with a React frontend and .NET Core backend.
+
+## Project Structure
+
+- `frontend/` - React TypeScript application
+- `backend/` - .NET Core 8 Minimal API
+- `docker-compose.yml` - Docker configuration for all services
+
+## Prerequisites
+
+- Docker and Docker Compose
+- .NET Core SDK 8.0
+- Node.js (for local development)
+- Yarn package manager
+
+## Getting Started
+
+1. Clone the repository
+2. Run the application using Docker:
+
+```bash
+docker-compose up --build
+```
+
+The application will be available at:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000
+- PostgreSQL: localhost:5432
+
+## API
+To view and test all available endpoints please access:
+- http://localhost:5000/swagger
+
+### Frontend
+
+```bash
+cd frontend
+yarn install    # Install dependencies
+yarn start      # Start development server
+```
+
+For other common frontend commands:
+```bash
+yarn build      # Create production build
+yarn test       # Run tests
+yarn lint       # Run linting
+```
+
+### Backend
+
+```bash
+cd backend
+dotnet restore
+dotnet run
+```
+
+### Backend Tests
+
+```bash
+cd backend
+# Run tests
+dotnet test
+
+# Generate coverage report
+./generate-coverage.ps1
+```
+
+The coverage report will be generated in HTML format and automatically opened in your default browser. You can find the report at:
+```
+backend/InventoryApp.Tests/TestResults/CoverageReport/index.html
+```
+
+Key test features:
+- xUnit test framework
+- Entity Framework in-memory database for integration tests
+- Moq for mocking dependencies
+- Coverlet for code coverage analysis
+- ReportGenerator for HTML coverage reports
+- Coverage configuration excludes database migrations
+
+## Features
+
+- Product listing with details view
+- CRUD operations for products
+- Inventory management
+- RESTful API
+- Swagger documentation
+- PostgreSQL database
+
+## API Endpoints
+I decided to separate the API in two controllers so we can have a better
+code organization.
+
+### Products
+- `GET /api/products` - Get all products
+- `GET /api/products/{id}` - Get product by ID
+- `POST /api/products` - Create new product
+- `PUT /api/products/{id}` - Update product
+- `DELETE /api/products/{id}` - Delete product
+
+### Inventory
+- `GET /api/inventory/products/{productId}` - Get product stock information
+- `POST /api/inventory/products/{productId}/stock` - Add stock to product
+- `DELETE /api/inventory/products/{productId}/stock` - Remove stock from product
+
+## Technologies
+
+- Frontend:
+  - React 19
+  - TypeScript
+  - Material UI components
+  - Yarn (package manager)
+  
+- Backend:
+  - .NET Core 8
+  - Entity Framework Core
+  - PostgreSQL
+  - Swagger/OpenAPI
+
+- Infrastructure:
+  - Docker
+  - Docker Compose
