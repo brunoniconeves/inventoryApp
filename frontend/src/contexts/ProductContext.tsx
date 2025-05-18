@@ -5,11 +5,14 @@ interface ProductContextData {
   products: Product[];
   loading: boolean;
   error: string | null;
-  loadProducts: () => Promise<void>;
+  initialized: boolean;
+  initializeProducts: () => Promise<void>;
+  refreshProducts: () => Promise<void>;
   updateProduct: (id: number, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: number) => Promise<void>;
   addStock: (productId: number, quantity: number) => Promise<void>;
   removeStock: (productId: number, quantity: number) => Promise<void>;
+  createProduct: (product: Omit<Product, 'id'>) => Promise<void>;
 }
 
 const ProductContext = createContext<ProductContextData>({} as ProductContextData);
@@ -26,27 +29,51 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
-  const loadProducts = useCallback(async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await productService.getAllProducts();
       setProducts(data);
+      return data;
     } catch (err) {
       setError('Failed to load products');
-      console.error(err);
+      console.error('Error loading products:', err);
+      throw err;
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const initializeProducts = useCallback(async () => {
+    if (initialized) return;
+    
+    try {
+      await fetchProducts();
+      setInitialized(true);
+    } catch (err) {
+      // Error already handled in fetchProducts
+    }
+  }, [initialized, fetchProducts]);
+
+  const refreshProducts = useCallback(async () => {
+    try {
+      await fetchProducts();
+    } catch (err) {
+      // Error already handled in fetchProducts
+    }
+  }, [fetchProducts]);
+
   const updateProduct = useCallback(async (id: number, productData: Partial<Product>) => {
     try {
       setLoading(true);
       setError(null);
-      await productService.updateProduct(id, productData);
-      await loadProducts(); // Reload the products list
+      const updatedProduct = await productService.updateProduct(id, productData);
+      setProducts(prevProducts =>
+        prevProducts.map(p => (p.id === id ? updatedProduct : p))
+      );
     } catch (err) {
       setError('Failed to update product');
       console.error(err);
@@ -54,14 +81,26 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setLoading(false);
     }
-  }, [loadProducts]);
+  }, []);
+
+  const createProduct = useCallback(async (product: Omit<Product, 'id'>) => {
+    try {
+      const newProduct = await productService.createProduct(product);
+      setProducts(prevProducts => [...prevProducts, newProduct]);
+      setError(null);
+    } catch (err) {
+      setError('Failed to create product');
+      console.error(err);
+      throw err;
+    }
+  }, []);
 
   const deleteProduct = useCallback(async (id: number) => {
     try {
       setLoading(true);
       setError(null);
       await productService.deleteProduct(id);
-      await loadProducts(); // Reload the products list
+      setProducts(prevProducts => prevProducts.filter(p => p.id !== id));
     } catch (err) {
       setError('Failed to delete product');
       console.error(err);
@@ -69,14 +108,20 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setLoading(false);
     }
-  }, [loadProducts]);
+  }, []);
 
   const addStock = useCallback(async (productId: number, quantity: number) => {
     try {
       setLoading(true);
       setError(null);
       await productService.addStock(productId, quantity);
-      await loadProducts(); // Reload to get updated stock
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === productId
+            ? { ...p, stockQuantity: p.stockQuantity + quantity }
+            : p
+        )
+      );
     } catch (err) {
       setError('Failed to add stock');
       console.error(err);
@@ -84,14 +129,20 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setLoading(false);
     }
-  }, [loadProducts]);
+  }, []);
 
   const removeStock = useCallback(async (productId: number, quantity: number) => {
     try {
       setLoading(true);
       setError(null);
       await productService.removeStock(productId, quantity);
-      await loadProducts(); // Reload to get updated stock
+      setProducts(prevProducts =>
+        prevProducts.map(p =>
+          p.id === productId
+            ? { ...p, stockQuantity: p.stockQuantity - quantity }
+            : p
+        )
+      );
     } catch (err) {
       setError('Failed to remove stock');
       console.error(err);
@@ -99,7 +150,7 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setLoading(false);
     }
-  }, [loadProducts]);
+  }, []);
 
   return (
     <ProductContext.Provider
@@ -107,11 +158,14 @@ export const ProductProvider: React.FC<{ children: ReactNode }> = ({ children })
         products,
         loading,
         error,
-        loadProducts,
+        initialized,
+        initializeProducts,
+        refreshProducts,
         updateProduct,
         deleteProduct,
         addStock,
         removeStock,
+        createProduct
       }}
     >
       {children}

@@ -1,23 +1,48 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   DataGrid, 
   GridColDef, 
   GridRenderCellParams,
   GridSortModel
 } from '@mui/x-data-grid';
-import { Box, IconButton, Tooltip, Stack } from '@mui/material';
-import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { 
+  Box, 
+  IconButton, 
+  Tooltip, 
+  Stack,
+  Typography,
+  Button,
+  Paper
+} from '@mui/material';
+import { 
+  Edit as EditIcon, 
+  Delete as DeleteIcon,
+  Add as AddIcon,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
 import { useProducts } from '../contexts/ProductContext';
 import { ProductEditModal } from './ProductEditModal';
 import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 import { Product } from '../services/productService';
 
 export const ProductList: React.FC = () => {
-  const { products, loading, error, deleteProduct, loadProducts } = useProducts();
+  const { 
+    products, 
+    loading, 
+    error, 
+    deleteProduct, 
+    initialized,
+    initializeProducts,
+    refreshProducts
+  } = useProducts();
+
+  const initializationRef = useRef(false);
+
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [isNewProduct, setIsNewProduct] = useState(false);
   const [sortModel, setSortModel] = useState<GridSortModel>([
     {
       field: 'name',
@@ -25,12 +50,32 @@ export const ProductList: React.FC = () => {
     },
   ]);
 
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+  // Initialize products on first render
+  if (!initialized && !loading && !initializationRef.current) {
+    initializationRef.current = true;
+    initializeProducts();
+  }
+
+  const handleRefresh = async () => {
+    await refreshProducts();
+  };
 
   const handleEditClick = (product: Product) => {
+    setIsNewProduct(false);
     setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+
+  const handleAddClick = () => {
+    setIsNewProduct(true);
+    setSelectedProduct({
+      id: 0,
+      name: '',
+      description: '',
+      sku: '',
+      price: 0,
+      stockQuantity: 0
+    });
     setIsModalOpen(true);
   };
 
@@ -50,6 +95,12 @@ export const ProductList: React.FC = () => {
         setProductToDelete(null);
       }
     }
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedProduct(null);
+    setIsNewProduct(false);
   };
 
   const columns: GridColDef[] = [
@@ -113,7 +164,79 @@ export const ProductList: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ height: 600, width: '100%' }}>
+    <Box sx={{ height: 600, width: '100%', p: 2 }}>
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          p: 2, 
+          mb: 2, 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          bgcolor: 'transparent',
+          borderRadius: 0
+        }}
+      >
+        <Typography 
+          variant="h4" 
+          component="h1" 
+          sx={{ 
+            fontWeight: 600,
+            color: 'text.primary',
+            fontSize: { xs: '1.5rem', sm: '2rem' }
+          }}
+        >
+          Products List - Inventory Management
+        </Typography>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<AddIcon />}
+            onClick={handleAddClick}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 3,
+              py: 1,
+              '&:hover': {
+                backgroundColor: 'success.dark',
+              }
+            }}
+          >
+            Add Product
+          </Button>
+          <Tooltip title="Refresh Products List" arrow>
+            <IconButton
+              onClick={handleRefresh}
+              disabled={loading}
+              sx={{
+                color: 'text.secondary',
+                '&:hover': {
+                  color: 'primary.main',
+                  backgroundColor: 'transparent'
+                },
+                transition: 'color 0.2s'
+              }}
+            >
+              <RefreshIcon 
+                sx={{
+                  animation: loading ? 'spin 1s linear infinite' : 'none',
+                  '@keyframes spin': {
+                    '0%': {
+                      transform: 'rotate(0deg)',
+                    },
+                    '100%': {
+                      transform: 'rotate(360deg)',
+                    },
+                  },
+                }}
+              />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Paper>
+
       <DataGrid
         rows={products}
         columns={columns}
@@ -158,11 +281,9 @@ export const ProductList: React.FC = () => {
       {selectedProduct && (
         <ProductEditModal
           open={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedProduct(null);
-          }}
+          onClose={handleModalClose}
           product={selectedProduct}
+          isNewProduct={isNewProduct}
         />
       )}
 

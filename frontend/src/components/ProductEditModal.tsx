@@ -24,6 +24,7 @@ interface ProductEditModalProps {
   open: boolean;
   onClose: () => void;
   product: Product;
+  isNewProduct?: boolean;
 }
 
 interface ValidationErrors {
@@ -31,6 +32,7 @@ interface ValidationErrors {
   description?: string;
   sku?: string;
   price?: string;
+  initialStock?: string;
 }
 
 const ErrorAlert: React.FC<AlertProps & { message: string }> = ({ message, ...props }) => (
@@ -40,14 +42,16 @@ const ErrorAlert: React.FC<AlertProps & { message: string }> = ({ message, ...pr
 export const ProductEditModal: React.FC<ProductEditModalProps> = ({
   open,
   onClose,
-  product: initialProduct
+  product: initialProduct,
+  isNewProduct = false
 }) => {
-  const { updateProduct, deleteProduct, addStock, removeStock } = useProducts();
-  const [formData, setFormData] = useState<Partial<Product>>({
+  const { updateProduct, deleteProduct, addStock, removeStock, createProduct } = useProducts();
+  const [formData, setFormData] = useState<Partial<Product> & { initialStock?: number }>({
     name: initialProduct.name,
     description: initialProduct.description,
     sku: initialProduct.sku,
     price: initialProduct.price,
+    initialStock: isNewProduct ? 0 : undefined,
   });
   const [stockQuantity, setStockQuantity] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +76,10 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
     
     if (!formData.price || formData.price <= 0) {
       errors.price = 'Product price must be greater than zero';
+    }
+
+    if (isNewProduct && (formData.initialStock === undefined || formData.initialStock < 0)) {
+      errors.initialStock = 'Initial stock quantity must be zero or greater';
     }
 
     setValidationErrors(errors);
@@ -121,13 +129,21 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
       if (!validateForm()) {
         return;
       }
-      
-      await updateProduct(initialProduct.id, formData);
+
+      if (isNewProduct) {
+        const { initialStock, ...productData } = formData;
+        const createdProduct = await createProduct({
+          ...productData,
+          stockQuantity: initialStock || 0,
+        } as Omit<Product, 'id'>);
+      } else {
+        await updateProduct(initialProduct.id, formData);
+      }
       setError(null);
       onClose();
     } catch (err) {
       const backendError = getErrorMessage(err);
-      setError(`Failed to update product\n${backendError}`);
+      setError(`Failed to ${isNewProduct ? 'create' : 'update'} product\n${backendError}`);
     }
   };
 
@@ -170,7 +186,9 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
   return (
     <>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Product</DialogTitle>
+        <DialogTitle>
+          {isNewProduct ? 'Create New Product' : 'Edit Product'}
+        </DialogTitle>
         <DialogContent>
           {error && (
             <Box sx={{ mb: 2 }}>
@@ -236,71 +254,96 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
                 InputProps={{
                   startAdornment: <Typography>$</Typography>,
                   inputProps: {
-                    min: 1,
-                    step: 1
+                    min: 0.01,
+                    step: 0.01
                   }
                 }}
               />
             </Box>
 
-            <Box>
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="h6" gutterBottom>
-                Stock Management
-              </Typography>
-              <Box sx={{ mb: 4 }}>Use "+" or "-" to add or remove the defined quantity of this product stock.</Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <IconButton
-                  color="primary"
-                  onClick={() => handleStockChange('add')}
-                >
-                  <AddIcon />
-                </IconButton>
+            {isNewProduct ? (
+              <Box>
                 <TextField
-                  label="Quantity"
+                  fullWidth
+                  label="Initial Stock Quantity"
+                  name="initialStock"
                   type="number"
-                  value={stockQuantity}
-                  onChange={handleStockQuantityChange}
+                  value={formData.initialStock}
+                  onChange={handleInputChange}
+                  error={!!validationErrors.initialStock}
+                  helperText={validationErrors.initialStock}
                   InputProps={{
                     inputProps: {
-                      min: 1,
+                      min: 0,
                       step: 1
                     }
                   }}
-                  size="small"
-                  sx={{ width: 100 }}
                 />
-                <IconButton
-                  color="secondary"
-                  onClick={() => handleStockChange('remove')}
-                  disabled={currentStock < stockQuantity}
-                >
-                  <RemoveIcon />
-                </IconButton>
-                <Typography>
-                  Current Stock: {currentStock}
-                </Typography>
               </Box>
-            </Box>
+            ) : (
+              <Box>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" gutterBottom>
+                  Stock Management
+                </Typography>
+                <Box sx={{ mb: 4 }}>Use "+" or "-" to add or remove the defined quantity of this product stock.</Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleStockChange('add')}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                  <TextField
+                    label="Quantity"
+                    type="number"
+                    value={stockQuantity}
+                    onChange={handleStockQuantityChange}
+                    InputProps={{
+                      inputProps: {
+                        min: 1,
+                        step: 1
+                      }
+                    }}
+                    size="small"
+                    sx={{ width: 100 }}
+                  />
+                  <IconButton
+                    color="secondary"
+                    onClick={() => handleStockChange('remove')}
+                    disabled={currentStock < stockQuantity}
+                  >
+                    <RemoveIcon />
+                  </IconButton>
+                  <Typography>
+                    Current Stock: {currentStock}
+                  </Typography>
+                </Box>
+              </Box>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleDeleteClick} color="error">
-            Delete Product
-          </Button>
+          {!isNewProduct && (
+            <Button onClick={handleDeleteClick} color="error">
+              Delete Product
+            </Button>
+          )}
           <Button onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} color="primary">
-            Save Changes
+          <Button onClick={handleSave} color="primary" variant="contained">
+            {isNewProduct ? 'Create Product' : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-        onConfirm={handleDeleteConfirm}
-        productName={initialProduct.name}
-      />
+      {!isNewProduct && (
+        <DeleteConfirmationDialog
+          open={deleteDialogOpen}
+          onClose={() => setDeleteDialogOpen(false)}
+          onConfirm={handleDeleteConfirm}
+          productName={initialProduct.name}
+        />
+      )}
     </>
   );
 }; 
