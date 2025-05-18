@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   DataGrid, 
   GridColDef, 
@@ -50,11 +50,16 @@ export const ProductList: React.FC = () => {
     },
   ]);
 
-  // Initialize products on first render
-  if (!initialized && !loading && !initializationRef.current) {
-    initializationRef.current = true;
-    initializeProducts();
-  }
+  useEffect(() => {
+    // Only initialize if not already initialized and not currently loading.
+    // The `initializationRef` was used to ensure it only runs once per mount if `initialized` could toggle.
+    // If `initialized` stays true once set, the ref might be redundant.
+    // However, to match the original intent of "run once if not initialized":
+    if (!initialized && !loading) {
+      initializeProducts();
+    }
+  }, [initialized, loading, initializeProducts]); // Dependencies for the effect
+
 
   const handleRefresh = async () => {
     await refreshProducts();
@@ -203,6 +208,7 @@ export const ProductList: React.FC = () => {
                 backgroundColor: 'success.dark',
               }
             }}
+            data-testid="add-product-button"
           >
             Add Product
           </Button>
@@ -218,6 +224,7 @@ export const ProductList: React.FC = () => {
                 },
                 transition: 'color 0.2s'
               }}
+              data-testid="refresh-products-button"
             >
               <RefreshIcon 
                 sx={{

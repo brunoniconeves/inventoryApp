@@ -186,7 +186,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
   return (
     <>
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle>
+        <DialogTitle data-testid="product-edit-modal-title">
           {isNewProduct ? 'Create New Product' : 'Edit Product'}
         </DialogTitle>
         <DialogContent>
