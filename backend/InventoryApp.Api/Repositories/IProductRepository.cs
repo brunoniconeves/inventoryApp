@@ -9,5 +9,4 @@ public interface IProductRepository
     Task<Product> AddAsync(Product product);
     Task<Product?> UpdateAsync(Product product);
     Task<bool> DeleteAsync(int id);
-    Task<Product?> UpdateStockAsync(int id, int quantity);
 } 

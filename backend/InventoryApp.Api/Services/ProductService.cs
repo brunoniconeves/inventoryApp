@@ -1,24 +1,31 @@
 using InventoryApp.Api.DTOs;
 using InventoryApp.Api.Models;
 using InventoryApp.Api.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace InventoryApp.Api.Services;
 
 public class ProductService : IProductService
 {
     private readonly IProductRepository _repository;
+    private readonly IInventoryRepository _inventoryRepository;
 
-    public ProductService(IProductRepository repository)
+    public ProductService(IProductRepository repository, IInventoryRepository inventoryRepository)
     {
         _repository = repository;
+        _inventoryRepository = inventoryRepository;
     }
 
     public async Task<IEnumerable<ProductDto>> GetAllProductsAsync()
     {
         var products = await _repository.GetAllAsync();
+        var inventories = await _inventoryRepository.GetAllAsync();
+        
+        var inventoryMap = inventories.ToDictionary(i => i.ProductId, i => i.CurrentStock);
+        
         return products.Select(p => new ProductDto(
             p.Id, p.Name, p.Description, p.Price,
-            p.StockQuantity, p.SKU, p.CreatedAt, p.UpdatedAt));
+            inventoryMap.GetValueOrDefault(p.Id, 0), p.SKU, p.CreatedAt, p.UpdatedAt));
     }
 
     public async Task<ProductDto?> GetProductByIdAsync(int id)
@@ -26,9 +33,10 @@ public class ProductService : IProductService
         var product = await _repository.GetByIdAsync(id);
         if (product == null) return null;
 
+        var inventory = await _inventoryRepository.GetByProductIdAsync(id);
         return new ProductDto(
             product.Id, product.Name, product.Description, product.Price,
-            product.StockQuantity, product.SKU, product.CreatedAt, product.UpdatedAt);
+            inventory?.CurrentStock ?? 0, product.SKU, product.CreatedAt, product.UpdatedAt);
     }
 
     public async Task<ProductDto> CreateProductAsync(CreateProductDto productDto)
@@ -39,17 +47,28 @@ public class ProductService : IProductService
         {
             Name = productDto.Name,
             Description = productDto.Description,
-            Price = productDto.Price,
-            StockQuantity = productDto.StockQuantity,
             SKU = productDto.SKU,
+            Price = productDto.Price,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        var created = await _repository.AddAsync(product);
+        var createdProduct = await _repository.AddAsync(product);
+
+        // Create initial inventory
+        var inventory = new Inventory
+        {
+            ProductId = createdProduct.Id,
+            CurrentStock = productDto.StockQuantity,
+            LastUpdated = DateTime.UtcNow
+        };
+
+        await _inventoryRepository.AddAsync(inventory);
+
         return new ProductDto(
-            created.Id, created.Name, created.Description, created.Price,
-            created.StockQuantity, created.SKU, created.CreatedAt, created.UpdatedAt);
+            createdProduct.Id, createdProduct.Name, createdProduct.Description,
+            createdProduct.Price, inventory.CurrentStock, createdProduct.SKU,
+            createdProduct.CreatedAt, createdProduct.UpdatedAt);
     }
 
     public async Task<ProductDto?> UpdateProductAsync(int id, UpdateProductDto productDto)
@@ -65,47 +84,18 @@ public class ProductService : IProductService
         existingProduct.SKU = productDto.SKU;
         existingProduct.UpdatedAt = DateTime.UtcNow;
 
-        var updated = await _repository.UpdateAsync(existingProduct);
-        if (updated == null) return null;
+        var updatedProduct = await _repository.UpdateAsync(existingProduct);
+        var inventory = await _inventoryRepository.GetByProductIdAsync(id);
 
         return new ProductDto(
-            updated.Id, updated.Name, updated.Description, updated.Price,
-            updated.StockQuantity, updated.SKU, updated.CreatedAt, updated.UpdatedAt);
+            updatedProduct.Id, updatedProduct.Name, updatedProduct.Description,
+            updatedProduct.Price, inventory?.CurrentStock ?? 0, updatedProduct.SKU,
+            updatedProduct.CreatedAt, updatedProduct.UpdatedAt);
     }
 
     public async Task<bool> DeleteProductAsync(int id)
     {
         return await _repository.DeleteAsync(id);
-    }
-
-    public async Task<ProductDto?> AddStockAsync(int id, UpdateStockDto stockDto)
-    {
-        if (stockDto.Quantity <= 0)
-        {
-            throw new ArgumentException("Quantity must be positive when adding stock");
-        }
-
-        var updated = await _repository.UpdateStockAsync(id, stockDto.Quantity);
-        if (updated == null) return null;
-
-        return new ProductDto(
-            updated.Id, updated.Name, updated.Description, updated.Price,
-            updated.StockQuantity, updated.SKU, updated.CreatedAt, updated.UpdatedAt);
-    }
-
-    public async Task<ProductDto?> RemoveStockAsync(int id, UpdateStockDto stockDto)
-    {
-        if (stockDto.Quantity <= 0)
-        {
-            throw new ArgumentException("Quantity must be positive when removing stock");
-        }
-
-        var updated = await _repository.UpdateStockAsync(id, -stockDto.Quantity);
-        if (updated == null) return null;
-
-        return new ProductDto(
-            updated.Id, updated.Name, updated.Description, updated.Price,
-            updated.StockQuantity, updated.SKU, updated.CreatedAt, updated.UpdatedAt);
     }
 
     private void ValidateProduct(CreateProductDto product)

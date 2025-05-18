@@ -46,9 +46,9 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
 
         // Seed with test data
         db.Products.AddRange(
-            new Product
-            {
-                Name = "Test Product 1",
+            new Product 
+            { 
+                Name = "Test Product 1", 
                 Description = "Test Description 1",
                 Price = 9.99m,
                 StockQuantity = 10,
@@ -56,9 +56,9 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             },
-            new Product
-            {
-                Name = "Test Product 2",
+            new Product 
+            { 
+                Name = "Test Product 2", 
                 Description = "Test Description 2",
                 Price = 19.99m,
                 StockQuantity = 20,

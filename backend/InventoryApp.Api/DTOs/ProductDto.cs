@@ -24,8 +24,4 @@ public record UpdateProductDto(
     string? Description,
     decimal Price,
     string? SKU
-);
-
-public record UpdateStockDto(
-    int Quantity
 ); 

@@ -40,6 +40,8 @@ public partial class Program
         // Register services and repositories
         builder.Services.AddScoped<IProductRepository, ProductRepository>();
         builder.Services.AddScoped<IProductService, ProductService>();
+        builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+        builder.Services.AddScoped<IInventoryService, InventoryService>();
 
         var app = builder.Build();
 
