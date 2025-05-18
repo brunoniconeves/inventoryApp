@@ -4,14 +4,14 @@ if (Test-Path "./InventoryApp.Tests/TestResults") {
 }
 
 # Run the tests and collect coverage data
-dotnet test --no-restore --verbosity normal
+dotnet test --no-restore --verbosity normal --collect:"XPlat Code Coverage"
 
 # Install the report generator tool if not already installed
 dotnet tool install -g dotnet-reportgenerator-globaltool 2>&1 | Out-Null
 
 # Generate the HTML report
 reportgenerator `
-    "-reports:./InventoryApp.Tests/TestResults/coverage.cobertura.xml" `
+    "-reports:./InventoryApp.Tests/TestResults/**/coverage.cobertura.xml" `
     "-targetdir:./InventoryApp.Tests/TestResults/CoverageReport" `
     "-reporttypes:Html;Badges"
 
