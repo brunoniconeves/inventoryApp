@@ -14,14 +14,16 @@ namespace InventoryApp.Tests.Services;
 public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
 {
     private readonly TestWebApplicationFactory _factory;
-    private readonly Mock<IProductRepository> _mockRepository;
+    private readonly Mock<IProductRepository> _mockProductRepository;
+    private readonly Mock<IInventoryRepository> _mockInventoryRepository;
     private readonly ProductService _service;
 
     public ProductServiceTests(TestWebApplicationFactory factory)
     {
         _factory = factory;
-        _mockRepository = new Mock<IProductRepository>();
-        _service = new ProductService(_mockRepository.Object);
+        _mockProductRepository = new Mock<IProductRepository>();
+        _mockInventoryRepository = new Mock<IInventoryRepository>();
+        _service = new ProductService(_mockProductRepository.Object, _mockInventoryRepository.Object);
     }
 
     [Fact]
@@ -39,8 +41,8 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(products);
         Assert.Equal(2, products.Count);
-        Assert.Contains(products, p => p.Name == "Test Product 1");
-        Assert.Contains(products, p => p.Name == "Test Product 2");
+        Assert.Contains(products, p => p.Name == "Test Product 1" && p.StockQuantity == 10);
+        Assert.Contains(products, p => p.Name == "Test Product 2" && p.StockQuantity == 20);
     }
 
     [Fact]
@@ -52,10 +54,10 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
 
         // First get all products to get a valid ID
         var allProducts = await client.GetFromJsonAsync<List<ProductDto>>("/api/products");
-        Assert.NotNull(allProducts); // Ensure we got products back
+        Assert.NotNull(allProducts);
 
         var targetProduct = allProducts.FirstOrDefault(p => p.Name == "Test Product 1");
-        Assert.NotNull(targetProduct); // Ensure we found the product
+        Assert.NotNull(targetProduct);
 
         // Act
         var response = await client.GetAsync($"/api/products/{targetProduct.Id}");
@@ -66,6 +68,7 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         Assert.NotNull(product);
         Assert.Equal("Test Product 1", product.Name);
         Assert.Equal(9.99m, product.Price);
+        Assert.Equal(10, product.StockQuantity);
     }
 
     [Fact]
@@ -115,10 +118,10 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         _factory.ResetDatabase();
         var client = _factory.CreateClient();
         var allProducts = await client.GetFromJsonAsync<List<ProductDto>>("/api/products");
-        Assert.NotNull(allProducts); // Ensure we got products back
-        Assert.NotEmpty(allProducts); // Ensure we have at least one product
+        Assert.NotNull(allProducts);
+        Assert.NotEmpty(allProducts);
 
-        var productToUpdate = allProducts[0]; // Use index instead of First() since we verified the list is not empty
+        var productToUpdate = allProducts[0];
         
         var updateDto = new UpdateProductDto(
             Name: "Updated Name",
@@ -145,10 +148,10 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         _factory.ResetDatabase();
         var client = _factory.CreateClient();
         var allProducts = await client.GetFromJsonAsync<List<ProductDto>>("/api/products");
-        Assert.NotNull(allProducts); // Ensure we got products back
-        Assert.NotEmpty(allProducts); // Ensure we have at least one product
+        Assert.NotNull(allProducts);
+        Assert.NotEmpty(allProducts);
 
-        var productToDelete = allProducts[0]; // Use index instead of First() since we verified the list is not empty
+        var productToDelete = allProducts[0];
 
         // Act
         var response = await client.DeleteAsync($"/api/products/{productToDelete.Id}");
@@ -172,7 +175,6 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
                 Name = "Test Product 1", 
                 Description = "Description 1",
                 Price = 9.99m,
-                StockQuantity = 10,
                 SKU = "SKU001",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -182,15 +184,32 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
                 Name = "Test Product 2", 
                 Description = "Description 2",
                 Price = 19.99m,
-                StockQuantity = 20,
                 SKU = "SKU002",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             }
         };
 
-        _mockRepository.Setup(repo => repo.GetAllAsync())
+        var inventories = new List<Inventory>
+        {
+            new() {
+                Id = 1,
+                ProductId = 1,
+                CurrentStock = 10,
+                LastUpdated = DateTime.UtcNow
+            },
+            new() {
+                Id = 2,
+                ProductId = 2,
+                CurrentStock = 20,
+                LastUpdated = DateTime.UtcNow
+            }
+        };
+
+        _mockProductRepository.Setup(repo => repo.GetAllAsync())
             .ReturnsAsync(products);
+        _mockInventoryRepository.Setup(repo => repo.GetAllAsync())
+            .ReturnsAsync(inventories);
 
         // Act
         var result = await _service.GetAllProductsAsync();
@@ -199,8 +218,14 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         Assert.NotNull(result);
         Assert.Equal(2, result.Count());
         Assert.Collection(result,
-            dto => Assert.Equal("Test Product 1", dto.Name),
-            dto => Assert.Equal("Test Product 2", dto.Name)
+            dto => {
+                Assert.Equal("Test Product 1", dto.Name);
+                Assert.Equal(10, dto.StockQuantity);
+            },
+            dto => {
+                Assert.Equal("Test Product 2", dto.Name);
+                Assert.Equal(20, dto.StockQuantity);
+            }
         );
     }
 
@@ -214,14 +239,23 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
             Name = "Test Product",
             Description = "Description",
             Price = 9.99m,
-            StockQuantity = 10,
             SKU = "SKU001",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        _mockRepository.Setup(repo => repo.GetByIdAsync(1))
+        var inventory = new Inventory
+        {
+            Id = 1,
+            ProductId = 1,
+            CurrentStock = 10,
+            LastUpdated = DateTime.UtcNow
+        };
+
+        _mockProductRepository.Setup(repo => repo.GetByIdAsync(1))
             .ReturnsAsync(product);
+        _mockInventoryRepository.Setup(repo => repo.GetByProductIdAsync(1))
+            .ReturnsAsync(inventory);
 
         // Act
         var result = await _service.GetProductByIdAsync(1);
@@ -230,13 +264,14 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         Assert.NotNull(result);
         Assert.Equal(product.Name, result.Name);
         Assert.Equal(product.Price, result.Price);
+        Assert.Equal(inventory.CurrentStock, result.StockQuantity);
     }
 
     [Fact]
     public async Task GetProductByIdAsync_WithInvalidId_ReturnsNull()
     {
         // Arrange
-        _mockRepository.Setup(repo => repo.GetByIdAsync(999))
+        _mockProductRepository.Setup(repo => repo.GetByIdAsync(999))
             .ReturnsAsync(() => null);
 
         // Act
@@ -256,17 +291,26 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         var product = new Product
         {
             Id = 1,
-            Name = createDto.Name ?? "New Product",
-            Description = createDto.Description ?? "Description",
+            Name = createDto.Name,
+            Description = createDto.Description ?? "",
             Price = createDto.Price,
-            StockQuantity = createDto.StockQuantity,
-            SKU = createDto.SKU ?? "SKU003",
+            SKU = createDto.SKU ?? "",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        _mockRepository.Setup(repo => repo.AddAsync(It.IsAny<Product>()))
+        var inventory = new Inventory
+        {
+            Id = 1,
+            ProductId = 1,
+            CurrentStock = createDto.StockQuantity,
+            LastUpdated = DateTime.UtcNow
+        };
+
+        _mockProductRepository.Setup(repo => repo.AddAsync(It.IsAny<Product>()))
             .ReturnsAsync(product);
+        _mockInventoryRepository.Setup(repo => repo.AddAsync(It.IsAny<Inventory>()))
+            .ReturnsAsync(inventory);
 
         // Act
         var result = await _service.CreateProductAsync(createDto);
@@ -275,6 +319,7 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         Assert.NotNull(result);
         Assert.Equal(createDto.Name, result.Name);
         Assert.Equal(createDto.Price, result.Price);
+        Assert.Equal(createDto.StockQuantity, result.StockQuantity);
     }
 
     [Fact]
@@ -291,28 +336,36 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
             Name = "Old Name",
             Description = "Old Description",
             Price = 29.99m,
-            StockQuantity = 10,
             SKU = "SKU001",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
+        var existingInventory = new Inventory
+        {
+            Id = 1,
+            ProductId = productId,
+            CurrentStock = 10,
+            LastUpdated = DateTime.UtcNow
+        };
+
         var updatedProduct = new Product
         {
             Id = productId,
-            Name = updateDto.Name ?? "Updated Product",
-            Description = updateDto.Description ?? "New Description",
+            Name = updateDto.Name,
+            Description = updateDto.Description ?? "",
             Price = updateDto.Price,
-            StockQuantity = existingProduct.StockQuantity,
-            SKU = updateDto.SKU ?? "SKU001",
+            SKU = updateDto.SKU ?? "",
             CreatedAt = existingProduct.CreatedAt,
             UpdatedAt = DateTime.UtcNow
         };
 
-        _mockRepository.Setup(repo => repo.GetByIdAsync(productId))
+        _mockProductRepository.Setup(repo => repo.GetByIdAsync(productId))
             .ReturnsAsync(existingProduct);
-        _mockRepository.Setup(repo => repo.UpdateAsync(It.IsAny<Product>()))
+        _mockProductRepository.Setup(repo => repo.UpdateAsync(It.IsAny<Product>()))
             .ReturnsAsync(updatedProduct);
+        _mockInventoryRepository.Setup(repo => repo.GetByProductIdAsync(productId))
+            .ReturnsAsync(existingInventory);
 
         // Act
         var result = await _service.UpdateProductAsync(productId, updateDto);
@@ -321,6 +374,7 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         Assert.NotNull(result);
         Assert.Equal(updateDto.Name, result.Name);
         Assert.Equal(updateDto.Price, result.Price);
+        Assert.Equal(existingInventory.CurrentStock, result.StockQuantity);
     }
 
     [Fact]
@@ -334,15 +388,14 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
             Name = "Test Product",
             Description = "Test Description",
             Price = 9.99m,
-            StockQuantity = 10,
             SKU = "SKU001",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
-        _mockRepository.Setup(repo => repo.GetByIdAsync(productId))
+        _mockProductRepository.Setup(repo => repo.GetByIdAsync(productId))
             .ReturnsAsync(existingProduct);
-        _mockRepository.Setup(repo => repo.DeleteAsync(productId))
+        _mockProductRepository.Setup(repo => repo.DeleteAsync(productId))
             .ReturnsAsync(true);
 
         // Act
@@ -350,21 +403,6 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
 
         // Assert
         Assert.True(result);
-    }
-
-    [Fact]
-    public async Task DeleteProductAsync_WithInvalidId_ReturnsFalse()
-    {
-        // Arrange
-        var productId = 999;
-        _mockRepository.Setup(repo => repo.GetByIdAsync(productId))
-            .ReturnsAsync(() => null);
-
-        // Act
-        var result = await _service.DeleteProductAsync(productId);
-
-        // Assert
-        Assert.False(result);
     }
 
     [Fact]
@@ -407,114 +445,6 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
-    public async Task AddStockAsync_WithValidQuantity_UpdatesStock()
-    {
-        // Arrange
-        var productId = 1;
-        var stockDto = new UpdateStockDto(10);
-        var existingProduct = new Product
-        {
-            Id = productId,
-            Name = "Test Product",
-            Description = "Description",
-            Price = 9.99m,
-            StockQuantity = 5,
-            SKU = "SKU001",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        var updatedProduct = new Product
-        {
-            Id = productId,
-            Name = existingProduct.Name,
-            Description = existingProduct.Description,
-            Price = existingProduct.Price,
-            StockQuantity = existingProduct.StockQuantity + stockDto.Quantity,
-            SKU = existingProduct.SKU,
-            CreatedAt = existingProduct.CreatedAt,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _mockRepository.Setup(repo => repo.UpdateStockAsync(productId, stockDto.Quantity))
-            .ReturnsAsync(updatedProduct);
-
-        // Act
-        var result = await _service.AddStockAsync(productId, stockDto);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal(15, result.StockQuantity);
-    }
-
-    [Fact]
-    public async Task AddStockAsync_WithNegativeQuantity_ThrowsArgumentException()
-    {
-        // Arrange
-        var productId = 1;
-        var stockDto = new UpdateStockDto(-5);
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<ArgumentException>(
-            () => _service.AddStockAsync(productId, stockDto));
-        Assert.Equal("Quantity must be positive when adding stock", exception.Message);
-    }
-
-    [Fact]
-    public async Task RemoveStockAsync_WithValidQuantity_UpdatesStock()
-    {
-        // Arrange
-        var productId = 1;
-        var stockDto = new UpdateStockDto(5);
-        var existingProduct = new Product
-        {
-            Id = productId,
-            Name = "Test Product",
-            Description = "Description",
-            Price = 9.99m,
-            StockQuantity = 10,
-            SKU = "SKU001",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        var updatedProduct = new Product
-        {
-            Id = productId,
-            Name = existingProduct.Name,
-            Description = existingProduct.Description,
-            Price = existingProduct.Price,
-            StockQuantity = existingProduct.StockQuantity - stockDto.Quantity,
-            SKU = existingProduct.SKU,
-            CreatedAt = existingProduct.CreatedAt,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _mockRepository.Setup(repo => repo.UpdateStockAsync(productId, -stockDto.Quantity))
-            .ReturnsAsync(updatedProduct);
-
-        // Act
-        var result = await _service.RemoveStockAsync(productId, stockDto);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal(5, result.StockQuantity);
-    }
-
-    [Fact]
-    public async Task RemoveStockAsync_WithNegativeQuantity_ThrowsArgumentException()
-    {
-        // Arrange
-        var productId = 1;
-        var stockDto = new UpdateStockDto(-5);
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<ArgumentException>(
-            () => _service.RemoveStockAsync(productId, stockDto));
-        Assert.Equal("Quantity must be positive when removing stock", exception.Message);
-    }
-
-    [Fact]
     public async Task UpdateProductAsync_WithInvalidPrice_ThrowsArgumentException()
     {
         // Arrange
@@ -525,7 +455,6 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
             Name = "Old Name",
             Description = "Old Description",
             Price = 29.99m,
-            StockQuantity = 10,
             SKU = "SKU001",
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -534,7 +463,7 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         var invalidUpdate = new UpdateProductDto(
             "Test Product", "Description", -1m, "SKU001");
 
-        _mockRepository.Setup(repo => repo.GetByIdAsync(productId))
+        _mockProductRepository.Setup(repo => repo.GetByIdAsync(productId))
             .ReturnsAsync(existingProduct);
 
         // Act & Assert

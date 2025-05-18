@@ -30,10 +30,12 @@ public class ProgramTests : IClassFixture<TestWebApplicationFactory>
         // Check if essential services are registered
         var productService = scope.ServiceProvider.GetService<IProductService>();
         var productRepository = scope.ServiceProvider.GetService<IProductRepository>();
+        var inventoryRepository = scope.ServiceProvider.GetService<IInventoryRepository>();
         var dbContext = scope.ServiceProvider.GetService<Api.Data.ApplicationDbContext>();
 
         Assert.NotNull(productService);
         Assert.NotNull(productRepository);
+        Assert.NotNull(inventoryRepository);
         Assert.NotNull(dbContext);
     }
 
