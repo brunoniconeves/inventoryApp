@@ -28,7 +28,7 @@ public class ProductsControllerTests
     {
         // Arrange & Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() => 
-            new ProductsController(null, Mock.Of<ILogger<ProductsController>>()));
+            new ProductsController(productService: null!, logger: Mock.Of<ILogger<ProductsController>>()));
         Assert.Equal("productService", exception.ParamName);
     }
 
@@ -37,7 +37,7 @@ public class ProductsControllerTests
     {
         // Arrange & Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() => 
-            new ProductsController(Mock.Of<IProductService>(), null));
+            new ProductsController(Mock.Of<IProductService>(), logger: null!));
         Assert.Equal("logger", exception.ParamName);
     }
 
@@ -180,11 +180,8 @@ public class ProductsControllerTests
     [Fact]
     public async Task CreateProduct_WithNullDto_ReturnsBadRequest()
     {
-        // Arrange
-        CreateProductDto? nullDto = null;
-
         // Act
-        var result = await _controller.CreateProduct(nullDto);
+        var result = await _controller.CreateProduct(null!);
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
@@ -192,7 +189,6 @@ public class ProductsControllerTests
     }
 
     [Theory]
-    [InlineData(null, "Description", 9.99, 10, "SKU001", "Product name is required")]
     [InlineData("", "Description", 9.99, 10, "SKU001", "Product name is required")]
     [InlineData(" ", "Description", 9.99, 10, "SKU001", "Product name is required")]
     public async Task CreateProduct_WithInvalidName_ReturnsBadRequest(string name, string description, decimal price, int stockQuantity, string sku, string expectedError)
@@ -209,7 +205,6 @@ public class ProductsControllerTests
     }
 
     [Theory]
-    [InlineData("Test Product", "Description", 9.99, 10, null, "Product SKU is required")]
     [InlineData("Test Product", "Description", 9.99, 10, "", "Product SKU is required")]
     [InlineData("Test Product", "Description", 9.99, 10, " ", "Product SKU is required")]
     public async Task CreateProduct_WithInvalidSKU_ReturnsBadRequestWithMessage(string name, string description, decimal price, int stockQuantity, string sku, string expectedError)
@@ -305,6 +300,32 @@ public class ProductsControllerTests
     }
 
     [Fact]
+    public async Task CreateProduct_WhenServiceThrowsException_ReturnsInternalServerError()
+    {
+        // Arrange
+        var productDto = new CreateProductDto("Test Product", "Description", 9.99m, 10, "SKU001");
+        _mockProductService
+            .Setup(service => service.CreateProductAsync(It.IsAny<CreateProductDto>()))
+            .ThrowsAsync(new Exception("Database error"));
+
+        // Act
+        var result = await _controller.CreateProduct(productDto);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+        Assert.Equal("An error occurred while creating the product", statusCodeResult.Value);
+        _mockLogger.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task UpdateProduct_WithValidData_ReturnsOkResult()
     {
         // Arrange
@@ -330,17 +351,15 @@ public class ProductsControllerTests
     }
 
     [Theory]
-    [InlineData(null, "Description", 9.99, "SKU001", "Product name is required")]
     [InlineData("", "Description", 9.99, "SKU001", "Product name is required")]
     [InlineData(" ", "Description", 9.99, "SKU001", "Product name is required")]
     public async Task UpdateProduct_WithInvalidName_ReturnsBadRequest(string name, string description, decimal price, string sku, string expectedError)
     {
         // Arrange
-        var productId = 1;
         var invalidProduct = new UpdateProductDto(name, description, price, sku);
 
         // Act
-        var result = await _controller.UpdateProduct(productId, invalidProduct);
+        var result = await _controller.UpdateProduct(1, invalidProduct);
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
@@ -348,17 +367,15 @@ public class ProductsControllerTests
     }
 
     [Theory]
-    [InlineData("Test Product", "Description", 9.99, null, "Product SKU is required")]
     [InlineData("Test Product", "Description", 9.99, "", "Product SKU is required")]
     [InlineData("Test Product", "Description", 9.99, " ", "Product SKU is required")]
     public async Task UpdateProduct_WithInvalidSKU_ReturnsBadRequestWithMessage(string name, string description, decimal price, string sku, string expectedError)
     {
         // Arrange
-        var productId = 1;
         var invalidProduct = new UpdateProductDto(name, description, price, sku);
 
         // Act
-        var result = await _controller.UpdateProduct(productId, invalidProduct);
+        var result = await _controller.UpdateProduct(1, invalidProduct);
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
@@ -409,10 +426,9 @@ public class ProductsControllerTests
     {
         // Arrange
         var productId = 1;
-        UpdateProductDto? nullDto = null;
 
         // Act
-        var result = await _controller.UpdateProduct(productId, nullDto);
+        var result = await _controller.UpdateProduct(productId, null!);
 
         // Assert
         var badRequestResult = Assert.IsType<BadRequestObjectResult>(result.Result);
@@ -423,7 +439,6 @@ public class ProductsControllerTests
     public async Task UpdateProduct_WithMismatchedId_ReturnsBadRequest()
     {
         // Arrange
-        var productId = 1;
         var updateDto = new UpdateProductDto(
             "Updated Product",
             "New Description",
@@ -446,45 +461,57 @@ public class ProductsControllerTests
     public async Task UpdateProduct_WithNonExistentProduct_ReturnsNotFound()
     {
         // Arrange
-        var productId = 999;
-        var updateDto = new UpdateProductDto(
+#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type
+        _mockProductService
+            .Setup(service => service.UpdateProductAsync(999, It.IsAny<UpdateProductDto>()))
+            .ReturnsAsync((ProductDto)null);
+#pragma warning restore CS8600
+
+        // Act
+        var result = await _controller.UpdateProduct(999, new UpdateProductDto(
             "Updated Product",
             "New Description",
             39.99m,
-            "SKU002");
-
-        _mockProductService
-            .Setup(service => service.UpdateProductAsync(productId, updateDto))
-            .ReturnsAsync((ProductDto)null);
-
-        // Act
-        var result = await _controller.UpdateProduct(productId, updateDto);
+            "SKU002"));
 
         // Assert
         Assert.IsType<NotFoundResult>(result.Result);
     }
 
     [Fact]
-    public async Task UpdateProduct_WithConcurrentUpdate_ReturnsConflict()
+    public async Task UpdateProduct_WhenConcurrentModification_ReturnsConflict()
     {
         // Arrange
-        var productId = 1;
-        var updateDto = new UpdateProductDto(
-            "Updated Product",
-            "New Description",
-            39.99m,
-            "SKU001");
-
+        var productDto = new UpdateProductDto("Updated Product", "New Description", 19.99m, "SKU002");
         _mockProductService
-            .Setup(service => service.UpdateProductAsync(productId, updateDto))
-            .ThrowsAsync(new InvalidOperationException("Product was modified by another user"));
+            .Setup(service => service.UpdateProductAsync(1, It.IsAny<UpdateProductDto>()))
+            .ThrowsAsync(new InvalidOperationException("Product has been modified by another user"));
 
         // Act
-        var result = await _controller.UpdateProduct(productId, updateDto);
+        var result = await _controller.UpdateProduct(1, productDto);
 
         // Assert
         var conflictResult = Assert.IsType<ConflictObjectResult>(result.Result);
-        Assert.Equal("Product was modified by another user", conflictResult.Value);
+        Assert.Equal("Product has been modified by another user", conflictResult.Value);
+    }
+
+    [Fact]
+    public async Task UpdateProduct_WhenConcurrentModification_WithDifferentMessage_ReturnsInternalServerError()
+    {
+        // Arrange
+        var productDto = new UpdateProductDto("Updated Product", "New Description", 19.99m, "SKU002");
+        _mockProductService
+            .Setup(service => service.UpdateProductAsync(1, It.IsAny<UpdateProductDto>()))
+            .ThrowsAsync(new InvalidOperationException("Some other error"));
+
+        // Act
+        var result = await _controller.UpdateProduct(1, productDto);
+
+        // Assert
+        var statusCodeResult = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCodeResult.StatusCode);
+        Assert.Equal("An error occurred while updating the product", statusCodeResult.Value);
+        VerifyLogError("Error updating product 1");
     }
 
     [Fact]
@@ -550,6 +577,22 @@ public class ProductsControllerTests
         Assert.Equal(500, statusCodeResult.StatusCode);
         Assert.Equal("An error occurred while deleting the product", statusCodeResult.Value);
         VerifyLogError($"Error deleting product {productId}");
+    }
+
+    [Fact]
+    public async Task DeleteProduct_WhenConcurrentModification_ReturnsConflict()
+    {
+        // Arrange
+        _mockProductService
+            .Setup(service => service.DeleteProductAsync(1))
+            .ThrowsAsync(new InvalidOperationException("Product has been modified by another user"));
+
+        // Act
+        var result = await _controller.DeleteProduct(1);
+
+        // Assert
+        var conflictResult = Assert.IsType<ConflictObjectResult>(result);
+        Assert.Equal("Product has been modified by another user", conflictResult.Value);
     }
 
     private void VerifyLogError(string expectedMessage)

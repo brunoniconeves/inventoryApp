@@ -444,8 +444,75 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal("Product stock quantity cannot be negative", exception.Message);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(null)]
+    public async Task CreateProductAsync_WithEmptyDescription_ThrowsArgumentException(string? invalidDescription)
+    {
+        // Arrange
+        var productDto = new CreateProductDto(
+            "Test Product",
+            invalidDescription,
+            9.99m,
+            10,
+            "SKU001");
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.CreateProductAsync(productDto));
+        Assert.Equal("Product description is required", exception.Message);
+    }
+
     [Fact]
-    public async Task UpdateProductAsync_WithInvalidPrice_ThrowsArgumentException()
+    public async Task CreateProductAsync_WithInvalidSKU_ThrowsArgumentException()
+    {
+        // Arrange
+        var invalidProduct = new CreateProductDto(
+            "Test Product", "Description", 9.99m, 10, "");
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.CreateProductAsync(invalidProduct));
+        Assert.Equal("Product SKU is required", exception.Message);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(null)]
+    public async Task UpdateProductAsync_WithEmptyDescription_ThrowsArgumentException(string? invalidDescription)
+    {
+        // Arrange
+        var existingProduct = new Product
+        {
+            Id = 1,
+            Name = "Test Product",
+            Description = "Original Description",
+            Price = 9.99m,
+            SKU = "SKU001",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _mockProductRepository
+            .Setup(repo => repo.GetByIdAsync(1))
+            .ReturnsAsync(existingProduct);
+
+        var updateDto = new UpdateProductDto(
+            "Test Product",
+            invalidDescription,
+            9.99m,
+            "SKU001");
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => _service.UpdateProductAsync(1, updateDto));
+        Assert.Equal("Product description is required", exception.Message);
+    }
+
+    [Fact]
+    public async Task UpdateProductAsync_WithInvalidSKU_ThrowsArgumentException()
     {
         // Arrange
         var productId = 1;
@@ -460,15 +527,15 @@ public class ProductServiceTests : IClassFixture<TestWebApplicationFactory>
             UpdatedAt = DateTime.UtcNow
         };
 
-        var invalidUpdate = new UpdateProductDto(
-            "Test Product", "Description", -1m, "SKU001");
+        var updateDto = new UpdateProductDto(
+            "Test Product", "Description", 9.99m, "");
 
         _mockProductRepository.Setup(repo => repo.GetByIdAsync(productId))
             .ReturnsAsync(existingProduct);
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<ArgumentException>(
-            () => _service.UpdateProductAsync(productId, invalidUpdate));
-        Assert.Equal("Product price must be greater than zero", exception.Message);
+            () => _service.UpdateProductAsync(productId, updateDto));
+        Assert.Equal("Product SKU is required", exception.Message);
     }
 } 

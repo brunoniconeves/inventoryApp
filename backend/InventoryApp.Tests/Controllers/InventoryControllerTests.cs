@@ -174,7 +174,7 @@ public class InventoryControllerTests
         var stockDto = new UpdateStockDto(10);
         _mockInventoryService
             .Setup(s => s.AddStockAsync(productId, stockDto))
-            .ReturnsAsync((InventoryDto)null);
+            .ReturnsAsync((InventoryDto?)null);
 
         // Act
         var result = await _controller.AddStock(productId, stockDto);
@@ -218,7 +218,7 @@ public class InventoryControllerTests
         var stockDto = new UpdateStockDto(5);
         _mockInventoryService
             .Setup(s => s.RemoveStockAsync(productId, stockDto))
-            .ReturnsAsync((InventoryDto)null);
+            .ReturnsAsync((InventoryDto?)null);
 
         // Act
         var result = await _controller.RemoveStock(productId, stockDto);
@@ -299,7 +299,7 @@ public class InventoryControllerTests
         int productId = 1;
         _mockInventoryService
             .Setup(s => s.GetProductStockAsync(productId))
-            .ReturnsAsync((InventoryDto)null);
+            .ReturnsAsync((InventoryDto?)null);
 
         // Act
         var result = await _controller.GetProductStock(productId);
