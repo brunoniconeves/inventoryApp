@@ -13,8 +13,8 @@ public class ProductsController : ControllerBase
 
     public ProductsController(IProductService productService, ILogger<ProductsController> logger)
     {
-        _productService = productService;
-        _logger = logger;
+        _productService = productService ?? throw new ArgumentNullException(nameof(productService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     [HttpGet]
@@ -37,6 +37,11 @@ public class ProductsController : ControllerBase
     {
         try
         {
+            if (id <= 0)
+            {
+                return BadRequest("Product ID must be greater than zero");
+            }
+
             var product = await _productService.GetProductByIdAsync(id);
             if (product == null)
             {
@@ -57,6 +62,31 @@ public class ProductsController : ControllerBase
     {
         try
         {
+            if (productDto == null)
+            {
+                return BadRequest("Product data is required");
+            }
+
+            if (string.IsNullOrWhiteSpace(productDto.Name))
+            {
+                return BadRequest("Product name is required");
+            }
+
+            if (string.IsNullOrWhiteSpace(productDto.SKU))
+            {
+                return BadRequest("Product SKU is required");
+            }
+
+            if (productDto.Price <= 0)
+            {
+                return BadRequest("Product price must be greater than zero");
+            }
+
+            if (productDto.StockQuantity < 0)
+            {
+                return BadRequest("Product stock quantity cannot be negative");
+            }
+
             var product = await _productService.CreateProductAsync(productDto);
             return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);
         }
@@ -76,6 +106,31 @@ public class ProductsController : ControllerBase
     {
         try
         {
+            if (id <= 0)
+            {
+                return BadRequest("Product ID must be greater than zero");
+            }
+
+            if (productDto == null)
+            {
+                return BadRequest("Product data is required");
+            }
+
+            if (string.IsNullOrWhiteSpace(productDto.Name))
+            {
+                return BadRequest("Product name is required");
+            }
+
+            if (string.IsNullOrWhiteSpace(productDto.SKU))
+            {
+                return BadRequest("Product SKU is required");
+            }
+
+            if (productDto.Price <= 0)
+            {
+                return BadRequest("Product price must be greater than zero");
+            }
+
             var product = await _productService.UpdateProductAsync(id, productDto);
             if (product == null)
             {
@@ -87,6 +142,10 @@ public class ProductsController : ControllerBase
         catch (ArgumentException ex)
         {
             return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("modified by another user"))
+        {
+            return Conflict(ex.Message);
         }
         catch (Exception ex)
         {
@@ -100,6 +159,11 @@ public class ProductsController : ControllerBase
     {
         try
         {
+            if (id <= 0)
+            {
+                return BadRequest("Product ID must be greater than zero");
+            }
+
             var result = await _productService.DeleteProductAsync(id);
             if (!result)
             {
@@ -107,6 +171,10 @@ public class ProductsController : ControllerBase
             }
 
             return NoContent();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("modified by another user"))
+        {
+            return Conflict(ex.Message);
         }
         catch (Exception ex)
         {
