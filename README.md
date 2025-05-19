@@ -71,6 +71,9 @@ yarn -v
 I've implemented Cypress E2E automated tests.
 
 To run it you'll need Cypress installed. Or the yarn e2e script will not run
+```bash
+yarn add cypress --dev
+```
 
 For other common frontend commands:
 ```bash

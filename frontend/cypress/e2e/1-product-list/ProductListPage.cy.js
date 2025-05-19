@@ -22,47 +22,52 @@ describe('Product List Page', () => {
     // Simulate a click on the Add button
     cy.get('[data-testid="add-product-button"]').click();
 
-    // Verify the expected behavior after clicking (e.g., modal opens)
-    cy.contains('Create New Product').should('be.visible'); // Adjust based on your app
-
+    // Wait for the modal to be visible
+    cy.get('[data-testid="product-edit-modal-title"]')
+      .should('be.visible')
+      .and('contain', 'Create New Product');
   });
 
   it('should close the create new product modal', () => {
     // Simulate a click on the Add button
     cy.get('[data-testid="add-product-button"]').click();
 
-    // Verify the expected behavior after clicking (e.g., modal opens)
-    cy.contains('Create New Product').should('be.visible'); // Adjust based on your app
+    // Wait for the modal to be visible
+    cy.get('[data-testid="product-edit-modal-title"]')
+      .should('be.visible')
+      .and('contain', 'Create New Product');
 
-    // Verify that close modal function works
-    cy.get('[data-testid="edit-modal-cancel-btn"]').click(); // Adjust based on your app
+    // Click the cancel button
+    cy.get('[data-testid="edit-modal-cancel-btn"]').click();
 
     // Verify the modal is closed
-    cy.contains('Create New Product').should('not.exist'); // Adjust based on your app
+    cy.get('[data-testid="product-edit-modal-title"]').should('not.exist');
   });
 
   it('should save the new product', () => {
     // Simulate a click on the Add button
     cy.get('[data-testid="add-product-button"]').click();
 
-    // Verify the expected behavior after clicking (e.g., modal opens)
-    cy.contains('Create New Product').should('be.visible'); // Adjust based on your app
+    // Wait for the modal to be visible
+    cy.get('[data-testid="product-edit-modal-title"]')
+      .should('be.visible')
+      .and('contain', 'Create New Product');
 
     // Fill in the form fields with new data
-    cy.get('[data-testid="name-input"]').clear().type('000 New Test Product Name');
-    cy.get('[data-testid="sku-input"]').clear().type('NewTestSKU123');
-    cy.get('[data-testid="description-input"]').clear().type('New Test Product Description');
-    cy.get('[data-testid="price-input"]').clear().type('55.55');
-    cy.get('[data-testid="initial-stock-input"]').clear().type('200');
+    cy.get('[data-testid="name-input"]').should('be.visible').clear().type('000 New Test Product Name');
+    cy.get('[data-testid="sku-input"]').should('be.visible').clear().type('NewTestSKU123');
+    cy.get('[data-testid="description-input"]').should('be.visible').clear().type('New Test Product Description');
+    cy.get('[data-testid="price-input"]').should('be.visible').clear().type('55.55');
+    cy.get('[data-testid="initial-stock-input"]').should('be.visible').clear().type('200');
 
-    // Simulate a click on the Save button
+    // Click the Save button
     cy.get('[data-testid="save-btn"]').click();
 
-    // Verify that the modal is closed and the product list is updated
-    cy.contains('Create New Product').should('not.exist'); // Adjust based on your app
+    // Wait for the modal to close
+    cy.get('[data-testid="product-edit-modal-title"]').should('not.exist');
 
-    // Verify that the updated product is displayed in the datagrid
-    cy.contains('New Test Product Name').should('be.visible');
+    // Verify that the new product is displayed in the datagrid
+    cy.contains('000 New Test Product Name').should('be.visible');
     cy.contains('NewTestSKU123').should('be.visible');
     cy.contains('New Test Product Description').should('be.visible');
     cy.contains('55.55').should('be.visible');
@@ -70,32 +75,50 @@ describe('Product List Page', () => {
   });
 
   it('should display the edit product modal', () => {
-    // Simulate a click on the first row of the datagrid
-    cy.get('.MuiDataGrid-row').first().find('[aria-label="Edit Product"]').click();
+    // Wait for the data grid to be loaded
+    cy.get('.MuiDataGrid-root').should('be.visible');
+    
+    // Find and click the edit button in the first row
+    cy.get('.MuiDataGrid-row')
+      .first()
+      .find('button[aria-label="Edit Product"]')
+      .should('be.visible')
+      .click();
 
-    // Verify the expected behavior after clicking (e.g., modal opens)
-    cy.contains('Edit Product').should('be.visible'); // Adjust based on your app
+    // Verify the edit modal is visible
+    cy.get('[data-testid="product-edit-modal-title"]')
+      .should('be.visible')
+      .and('contain', 'Edit Product');
   });
 
   it('should save the edited product', () => {
-    // Simulate a click on the first row of the datagrid
-    cy.get('.MuiDataGrid-row').first().find('[aria-label="Edit Product"]').click();
+    // Wait for the data grid to be loaded
+    cy.get('.MuiDataGrid-root').should('be.visible');
+    
+    // Find and click the edit button in the first row
+    cy.get('.MuiDataGrid-row')
+      .first()
+      .find('button[aria-label="Edit Product"]')
+      .should('be.visible')
+      .click();
 
-    // Verify the expected behavior after clicking (e.g., modal opens)
-    cy.contains('Edit Product').should('be.visible'); // Adjust based on your app
+    // Wait for the modal to be visible
+    cy.get('[data-testid="product-edit-modal-title"]')
+      .should('be.visible')
+      .and('contain', 'Edit Product');
 
     // Fill in the form fields with new data
-    cy.get('[data-testid="name-input"]').clear().type('000 Updated Product Name');
-    cy.get('[data-testid="sku-input"]').clear().type('NewSKU123');
-    cy.get('[data-testid="description-input"]').clear().type('Updated Product Description');
-    cy.get('[data-testid="price-input"]').clear().type('99.99');
-    cy.get('[data-testid="stock-quantity-input"]').clear().type('10');
+    cy.get('[data-testid="name-input"]').should('be.visible').clear().type('000 Updated Product Name');
+    cy.get('[data-testid="sku-input"]').should('be.visible').clear().type('NewSKU123');
+    cy.get('[data-testid="description-input"]').should('be.visible').clear().type('Updated Product Description');
+    cy.get('[data-testid="price-input"]').should('be.visible').clear().type('99.99');
+    cy.get('[data-testid="stock-quantity-input"]').should('be.visible').clear().type('10');
 
-    // Simulate a click on the Save button
+    // Click the Save button
     cy.get('[data-testid="save-btn"]').click();
 
-    // Verify that the modal is closed and the product list is updated
-    cy.contains('Edit Product').should('not.exist'); // Adjust based on your app
+    // Wait for the modal to close
+    cy.get('[data-testid="product-edit-modal-title"]').should('not.exist');
 
     // Verify that the updated product is displayed in the datagrid
     cy.contains('000 Updated Product Name').should('be.visible');
@@ -106,11 +129,19 @@ describe('Product List Page', () => {
   });
 
   it('On delete product, display confirmation question', () => {
-    // Simulate a click on the first row of the datagrid
-    cy.get('.MuiDataGrid-row').first().find('[aria-label="Delete Product"]').click();
+    // Wait for the data grid to be loaded
+    cy.get('.MuiDataGrid-root').should('be.visible');
+    
+    // Find and click the delete button in the first row
+    cy.get('.MuiDataGrid-row')
+      .first()
+      .find('button[aria-label="Delete Product"]')
+      .should('be.visible')
+      .click();
 
-    cy.contains('Delete Product').should('exist');
-    cy.get('[data-testid="confirm-delete-btn"]').should('exist');
+    // Verify the delete confirmation dialog is visible
+    cy.contains('Delete Product').should('be.visible');
+    cy.get('[data-testid="confirm-delete-btn"]').should('be.visible');
   });
 
   it('On delete confirm, remove the product', () => {
@@ -118,10 +149,14 @@ describe('Product List Page', () => {
     cy.get('.MuiDataGrid-row').then((rows) => {
       const initialRowCount = rows.length;
 
-      // Simulate a click on the first row of the datagrid
-      cy.get('.MuiDataGrid-row').first().find('[aria-label="Delete Product"]').click();
+      // Find and click the delete button in the first row
+      cy.get('.MuiDataGrid-row')
+        .first()
+        .find('button[aria-label="Delete Product"]')
+        .should('be.visible')
+        .click();
 
-      // Simulate a click on the confirm delete button
+      // Click the confirm delete button
       cy.get('[data-testid="confirm-delete-btn"]').click();
 
       // Verify that the product is deleted

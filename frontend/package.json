@@ -42,8 +42,9 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "e2e": "cypress run",
-    "e2e:open": "cypress open"
+    "e2e": "cypress run --headless --browser chrome",
+    "e2e:open": "cypress open",
+    "e2e:dev": "cypress run --browser chrome"
   },
   "jest": {
     "moduleNameMapper": {
