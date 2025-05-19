@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   DataGrid, 
   GridColDef, 
@@ -21,29 +22,26 @@ import {
   Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { useProducts } from '../contexts/ProductContext';
-import { ProductEditModal } from './ProductEditModal';
-import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 import { Product } from '../services/productService';
+import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 
 export const ProductList: React.FC = () => {
+  const navigate = useNavigate();
   const { 
     products, 
     loading, 
     error, 
-    deleteProduct, 
     initialized,
     initializeProducts,
-    refreshProducts
+    refreshProducts,
+    deleteProduct
   } = useProducts();
 
   const initializationRef = useRef(false);
-
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [isNewProduct, setIsNewProduct] = useState(false);
-  const [sortModel, setSortModel] = useState<GridSortModel>([
+
+  const [sortModel, setSortModel] = React.useState<GridSortModel>([
     {
       field: 'name',
       sort: 'asc',
@@ -51,37 +49,17 @@ export const ProductList: React.FC = () => {
   ]);
 
   useEffect(() => {
-    // Only initialize if not already initialized and not currently loading.
-    // The `initializationRef` was used to ensure it only runs once per mount if `initialized` could toggle.
-    // If `initialized` stays true once set, the ref might be redundant.
-    // However, to match the original intent of "run once if not initialized":
     if (!initialized && !loading) {
       initializeProducts();
     }
-  }, [initialized, loading, initializeProducts]); // Dependencies for the effect
-
+  }, [initialized, loading, initializeProducts]);
 
   const handleRefresh = async () => {
     await refreshProducts();
   };
 
   const handleEditClick = (product: Product) => {
-    setIsNewProduct(false);
-    setSelectedProduct(product);
-    setIsModalOpen(true);
-  };
-
-  const handleAddClick = () => {
-    setIsNewProduct(true);
-    setSelectedProduct({
-      id: 0,
-      name: '',
-      description: '',
-      sku: '',
-      price: 0,
-      stockQuantity: 0
-    });
-    setIsModalOpen(true);
+    navigate(`/products/${product.id}/edit`);
   };
 
   const handleDeleteClick = (product: Product) => {
@@ -93,6 +71,7 @@ export const ProductList: React.FC = () => {
     if (productToDelete) {
       try {
         await deleteProduct(productToDelete.id);
+        await refreshProducts();
       } catch (error) {
         console.error('Failed to delete product:', error);
       } finally {
@@ -102,10 +81,13 @@ export const ProductList: React.FC = () => {
     }
   };
 
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setSelectedProduct(null);
-    setIsNewProduct(false);
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setProductToDelete(null);
+  };
+
+  const handleAddClick = () => {
+    navigate('/products/new');
   };
 
   const columns: GridColDef[] = [
@@ -142,6 +124,8 @@ export const ProductList: React.FC = () => {
                 width: 32,
                 height: 32,
               }}
+              aria-label="Edit Product"
+              data-testid="edit-product-button"
             >
               <EditIcon fontSize="small" />
             </IconButton>
@@ -151,14 +135,16 @@ export const ProductList: React.FC = () => {
               onClick={() => handleDeleteClick(params.row)}
               size="small"
               sx={{
-                backgroundColor: '#ff4444',
-                color: 'white',
+                backgroundColor: '#d32f2f',
+                color: '#E7E7E7',
                 '&:hover': {
-                  backgroundColor: '#cc0000',
+                  backgroundColor: '#b71c1c',
                 },
                 width: 32,
                 height: 32,
               }}
+              aria-label="Delete Product"
+              data-testid="delete-product-button"
             >
               <DeleteIcon fontSize="small" />
             </IconButton>
@@ -169,7 +155,13 @@ export const ProductList: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ height: 600, width: '100%', p: 2 }}>
+    <Box sx={{ height: 600, width: '100%' }}>
+      <DeleteConfirmationDialog
+        open={deleteDialogOpen}
+        productName={productToDelete?.name || ''}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
       <Paper 
         elevation={0} 
         sx={{ 
@@ -212,35 +204,6 @@ export const ProductList: React.FC = () => {
           >
             Add Product
           </Button>
-          <Tooltip title="Refresh Products List" arrow>
-            <IconButton
-              onClick={handleRefresh}
-              disabled={loading}
-              sx={{
-                color: 'text.secondary',
-                '&:hover': {
-                  color: 'primary.main',
-                  backgroundColor: 'transparent'
-                },
-                transition: 'color 0.2s'
-              }}
-              data-testid="refresh-products-button"
-            >
-              <RefreshIcon 
-                sx={{
-                  animation: loading ? 'spin 1s linear infinite' : 'none',
-                  '@keyframes spin': {
-                    '0%': {
-                      transform: 'rotate(0deg)',
-                    },
-                    '100%': {
-                      transform: 'rotate(360deg)',
-                    },
-                  },
-                }}
-              />
-            </IconButton>
-          </Tooltip>
         </Stack>
       </Paper>
 
@@ -283,25 +246,6 @@ export const ProductList: React.FC = () => {
             backgroundColor: '#e3f2fd'
           }
         }}
-      />
-      
-      {selectedProduct && (
-        <ProductEditModal
-          open={isModalOpen}
-          onClose={handleModalClose}
-          product={selectedProduct}
-          isNewProduct={isNewProduct}
-        />
-      )}
-
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
-        onClose={() => {
-          setDeleteDialogOpen(false);
-          setProductToDelete(null);
-        }}
-        onConfirm={handleDeleteConfirm}
-        productName={productToDelete?.name || ''}
       />
     </Box>
   );

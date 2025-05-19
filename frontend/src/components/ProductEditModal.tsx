@@ -345,9 +345,9 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
       {!isNewProduct && (
         <DeleteConfirmationDialog
           open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
-          onConfirm={handleDeleteConfirm}
           productName={initialProduct.name}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteDialogOpen(false)}
         />
       )}
     </>

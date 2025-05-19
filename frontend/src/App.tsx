@@ -1,8 +1,10 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Container, CssBaseline, ThemeProvider } from '@mui/material';
 import { ProductProvider } from './contexts/ProductContext';
 import { ProductList } from './components/ProductList';
+import { CreateProductPage } from './pages/CreateProductPage';
+import { EditProductPage } from './pages/EditProductPage';
 import { createTheme} from '@mui/material/styles';
 
 //add color theme
@@ -22,13 +24,15 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <ProductProvider>
-        <BrowserRouter>
+        <Router>
           <Container maxWidth="lg" sx={{ py: 4 }}>
             <Routes>
               <Route path="/" element={<ProductList />} />
+              <Route path="/products/new" element={<CreateProductPage />} />
+              <Route path="/products/:id/edit" element={<EditProductPage />} />
             </Routes>
           </Container>
-        </BrowserRouter>
+        </Router>
       </ProductProvider>
     </ThemeProvider>
   );
