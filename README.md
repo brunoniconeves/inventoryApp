@@ -43,9 +43,10 @@ yarn start      # Start development server
 
 For other common frontend commands:
 ```bash
-yarn build      # Create production build
-yarn test       # Run tests
-yarn lint       # Run linting
+yarn build        # Create production build
+yarn test         # Run unit tests
+yarn e2e          # Run E2E automated tests with Cypress
+yarn cypress open # Open Cypress UI to run the tests
 ```
 
 ### Backend
@@ -79,6 +80,33 @@ Key test features:
 - Coverlet for code coverage analysis
 - ReportGenerator for HTML coverage reports
 - Coverage configuration excludes database migrations
+
+## End-to-End (E2E) Tests
+
+End-to-End (E2E) tests are designed to test the complete functionality of the application by simulating real user scenarios. These tests ensure that all components of the system work together as expected.
+
+I decided to use Cypress to create a small automated E2E test covering the main features:
+- List Produts
+- Edit an Existing Product
+- Add a new product
+
+### E2E execution Prerequisites
+On the frontend folder (/frontend)
+- Ensure all dependencies are installed by running:
+  ```bash
+  yarn install
+- The application must be running (frontend and backend)
+- Under the frontend directory run: 
+```bash
+yarn run e2e
+```
+
+If you want to see Cypress UI with the automation tests run:
+```bash
+yarn cypress open
+```
+Select E2E tests, choose your browser and Start the E2E tests selecting "ProductListPage" spec.
+
 
 ## Features
 
@@ -122,3 +150,15 @@ code organization.
 - Infrastructure:
   - Docker
   - Docker Compose
+
+## Main Design Decisions
+
+- Decided to split Products and Inventory controll logic.
+  This brings more control and separion of concerts, less code in single controller and service. Better code readability and future scalability.
+
+- Created a DTO layer to separate the concerns add security (expose only what is needed).
+
+- Decided to build the frontend exercise as an extension of the API exercise
+  That way I could show more control of how to setup a project using a modern architecture with docker.
+
+- Decided to implement E2E tests that can automatize QA tests of the entire application that integrate Backend, Frontend and Database.
