@@ -53,8 +53,16 @@ public partial class Program
             c.RoutePrefix = "swagger";
         });
 
-        // Redirect root to Swagger UI
-        app.MapGet("/", () => Results.Redirect("/swagger"));
+        // Redirect root to Swagger UI using middleware instead of endpoint
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.Value == "/")
+            {
+                context.Response.Redirect("/swagger");
+                return;
+            }
+            await next();
+        });
 
         app.UseCors();
         app.MapControllers();
