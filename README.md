@@ -35,7 +35,7 @@ The application will be available at:
 To view and test all available endpoints please access:
 - http://localhost:5000/swagger
 
-### Frontend
+## Frontend
 
 ```bash
 cd frontend
@@ -43,6 +43,7 @@ yarn install    # Install dependencies
 yarn start      # Start development server
 ```
 
+### Yarn
 if you don't have yarn package manager installed you can do that:
 If you are using Node.js v16+, Yarn is included in Corepack
 ```bash
@@ -65,6 +66,11 @@ Verify yarn installation with
 ```bash
 yarn -v
 ```
+
+### Cypress for E2E Tests
+I've implemented Cypress E2E automated tests.
+
+To run it you'll need Cypress installed. Or the yarn e2e script will not run
 
 For other common frontend commands:
 ```bash
