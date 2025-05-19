@@ -20,7 +20,7 @@ A full-stack application for managing inventory with a React frontend and .NET C
 ## Getting Started
 
 1. Clone the repository
-2. Run the application using Docker:
+2. Run the application using Docker on the root folder:
 
 ```bash
 docker-compose up --build
@@ -197,6 +197,14 @@ code organization.
 
 - Decided to implement E2E tests that can automatize QA tests of the entire application that integrate Backend, Frontend and Database.
 
+### Branches 
+- Main
+  - After I found an issue with MUI Modal/Dialogs I decided to play safe and use a separate route 
+  to edit and add new products. And this was keept on the main branch.
+
+- feat/modalEditDesign
+  - The first version that use modal to open a product details or a new product. Keep in mind that it could render errors in some browsers because of MUI issue.
+
 ## If we have more time, next steps:
 
 ### Backend (.NET):
@@ -215,6 +223,9 @@ IP Whitelisting:
 Restrict access to the API by allowing only requests from the IP address of your frontend server.
 
 ## Frontend:
+Add more unit tests covering delete scenarios
+I found some issues with the Material UI DataGrid so It might need some refactor (and more time)
+
 Use Environment Variables:
 Store sensitive information like API keys in environment variables, not in the codebase.
 
