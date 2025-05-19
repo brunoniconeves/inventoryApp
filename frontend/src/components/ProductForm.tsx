@@ -16,7 +16,6 @@ import { Add as AddIcon, Remove as RemoveIcon } from '@mui/icons-material';
 import { Product } from '../services/productService';
 import { useProducts } from '../contexts/ProductContext';
 import axios from 'axios';
-import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 
 interface ProductFormProps {
   product?: Product;
@@ -157,25 +156,16 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const handleDelete = async () => {
     if (!product) return;
     
-    try {
-      await deleteProduct(product.id);
-      setDeleteDialogOpen(false);
-      navigate('/');
-    } catch (err) {
-      const backendError = getErrorMessage(err);
-      setError(`Failed to delete product\n${backendError}`);
-      setDeleteDialogOpen(false);
+    const confirmMessage = `Are you sure you want to delete the product "${product.name}"? This action cannot be undone.`;
+    if (window.confirm(confirmMessage)) {
+      try {
+        await deleteProduct(product.id);
+        navigate('/');
+      } catch (err) {
+        const backendError = getErrorMessage(err);
+        setError(`Failed to delete product\n${backendError}`);
+      }
     }
-  };
-
-  const handleDeleteClick = () => {
-    setError(null); // Clear any previous errors
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteCancel = () => {
-    setError(null); // Clear any previous errors
-    setDeleteDialogOpen(false);
   };
 
   const handleStockChange = async (action: 'add' | 'remove') => {
@@ -201,13 +191,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   };
 
   return (
-    <Container maxWidth="md">
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
-        productName={product?.name || ''}
-        onConfirm={handleDelete}
-        onCancel={handleDeleteCancel}
-      />
+    <Container maxWidth="md">     
       <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
         <Box sx={{ mb: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom>
@@ -411,7 +395,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
             {!isNewProduct && (
               <Button 
-                onClick={handleDeleteClick}
+                onClick={handleDelete}
                 color="error" 
                 variant="contained"
                 data-testid="delete-btn"

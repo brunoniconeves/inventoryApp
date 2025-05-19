@@ -23,7 +23,6 @@ import {
 } from '@mui/icons-material';
 import { useProducts } from '../contexts/ProductContext';
 import { Product } from '../services/productService';
-import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
 
 export const ProductList: React.FC = () => {
   const navigate = useNavigate();
@@ -38,9 +37,6 @@ export const ProductList: React.FC = () => {
   } = useProducts();
 
   const initializationRef = useRef(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-
   const [sortModel, setSortModel] = React.useState<GridSortModel>([
     {
       field: 'name',
@@ -62,28 +58,16 @@ export const ProductList: React.FC = () => {
     navigate(`/products/${product.id}/edit`);
   };
 
-  const handleDeleteClick = (product: Product) => {
-    setProductToDelete(product);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (productToDelete) {
+  const handleDeleteClick = async (product: Product) => {
+    const confirmMessage = `Are you sure you want to delete the product "${product.name}"? This action cannot be undone.`;
+    if (window.confirm(confirmMessage)) {
       try {
-        await deleteProduct(productToDelete.id);
+        await deleteProduct(product.id);
         await refreshProducts();
       } catch (error) {
         console.error('Failed to delete product:', error);
-      } finally {
-        setDeleteDialogOpen(false);
-        setProductToDelete(null);
       }
     }
-  };
-
-  const handleDeleteCancel = () => {
-    setDeleteDialogOpen(false);
-    setProductToDelete(null);
   };
 
   const handleAddClick = () => {
@@ -156,12 +140,6 @@ export const ProductList: React.FC = () => {
 
   return (
     <Box sx={{ height: 600, width: '100%' }}>
-      <DeleteConfirmationDialog
-        open={deleteDialogOpen}
-        productName={productToDelete?.name || ''}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
       <Paper 
         elevation={0} 
         sx={{ 
@@ -224,44 +202,20 @@ export const ProductList: React.FC = () => {
       <DataGrid
         rows={products}
         columns={columns}
-        loading={loading}
-        pageSizeOptions={[5, 10, 25]}
         sortModel={sortModel}
         onSortModelChange={(model) => setSortModel(model)}
-        initialState={{
-          pagination: { paginationModel: { pageSize: 10 } },
-        }}
         disableRowSelectionOnClick
-        disableVirtualization={process.env.NODE_ENV === 'test'}
-        hideFooterPagination={process.env.NODE_ENV === 'test'}
-        autoHeight={process.env.NODE_ENV === 'test'}
+        autoHeight
+        loading={loading}
         sx={{
+          backgroundColor: 'white',
+          '& .MuiDataGrid-cell': {
+            borderColor: '#E7E7E7',
+          },
           '& .MuiDataGrid-columnHeaders': {
-            backgroundColor: 'black',
-            color: 'white',
-            '& .MuiIconButton-root': {
-              color: 'white'
-            }
+            backgroundColor: '#F5F5F5',
+            borderColor: '#E7E7E7',
           },
-          '& .MuiDataGrid-footerContainer': {
-            backgroundColor: 'black',
-            color: 'white',
-            '& .MuiTablePagination-root': {
-              color: 'white'
-            },
-            '& .MuiIconButton-root': {
-              color: 'white'
-            }
-          },
-          '& .MuiDataGrid-row:nth-of-type(odd)': {
-            backgroundColor: '#f5f5f5'
-          },
-          '& .MuiDataGrid-row:nth-of-type(even)': {
-            backgroundColor: 'white'
-          },
-          '& .MuiDataGrid-row:hover': {
-            backgroundColor: '#e3f2fd'
-          }
         }}
       />
     </Box>

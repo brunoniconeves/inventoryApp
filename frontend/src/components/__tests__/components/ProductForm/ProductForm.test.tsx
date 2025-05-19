@@ -221,4 +221,53 @@ describe('ProductForm Component', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/');
     });
   });
+
+  it('handles successful product deletion when confirmed', async () => {
+    // Mock window.confirm to return true
+    const confirmSpy = jest.spyOn(window, 'confirm').mockImplementation(() => true);
+
+    render(
+      <ProductProvider>
+        <ProductForm product={mockProduct} />
+      </ProductProvider>
+    );
+
+    const deleteButton = screen.getByTestId('delete-btn');
+    fireEvent.click(deleteButton);
+
+    // Verify confirm was called with correct message
+    expect(confirmSpy).toHaveBeenCalledWith(
+      'Are you sure you want to delete the product "Test Product"? This action cannot be undone.'
+    );
+
+    await waitFor(() => {
+      expect(productService.deleteProduct).toHaveBeenCalledWith(mockProduct.id);
+      expect(mockNavigate).toHaveBeenCalledWith('/');
+    });
+
+    confirmSpy.mockRestore();
+  });
+
+  it('does not delete product when canceling confirmation', async () => {
+    // Mock window.confirm to return false
+    const confirmSpy = jest.spyOn(window, 'confirm').mockImplementation(() => false);
+
+    render(
+      <ProductProvider>
+        <ProductForm product={mockProduct} />
+      </ProductProvider>
+    );
+
+    const deleteButton = screen.getByTestId('delete-btn');
+    fireEvent.click(deleteButton);
+
+    // Verify confirm was called
+    expect(confirmSpy).toHaveBeenCalled();
+
+    // Verify delete was not called
+    expect(productService.deleteProduct).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
 }); 
