@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -12,7 +12,9 @@ import {
   IconButton,
   Alert,
   AlertProps,
-  Divider
+  Divider,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { Add as AddIcon, Remove as RemoveIcon } from '@mui/icons-material';
 import { Product } from '../services/productService';
@@ -45,6 +47,9 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
   product: initialProduct,
   isNewProduct = false
 }) => {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('md'));
+  const [isModalMounted, setIsModalMounted] = useState(false);
   const { updateProduct, deleteProduct, addStock, removeStock, createProduct } = useProducts();
   const [formData, setFormData] = useState<Partial<Product> & { initialStock?: number }>({
     name: initialProduct.name,
@@ -58,6 +63,18 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
   const [currentStock, setCurrentStock] = useState<number>(initialProduct.stockQuantity);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      // Delay modal mounting to ensure document is ready
+      const timer = setTimeout(() => {
+        setIsModalMounted(true);
+      }, 0);
+      return () => clearTimeout(timer);
+    } else {
+      setIsModalMounted(false);
+    }
+  }, [open]);
 
   const validateForm = (): boolean => {
     const errors: ValidationErrors = {};
@@ -185,164 +202,176 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
 
   return (
     <>
-      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-        <DialogTitle data-testid="product-edit-modal-title">
-          {isNewProduct ? 'Create New Product' : 'Edit Product'}
-        </DialogTitle>
-        <DialogContent>
-          {error && (
-            <Box sx={{ mb: 2 }}>
-              <ErrorAlert 
-                message={error} 
-                severity="error" 
-                sx={{ 
-                  whiteSpace: 'pre-line',
-                  '& .MuiAlert-message': {
-                    whiteSpace: 'pre-line'
-                  }
-                }} 
-              />
-            </Box>
-          )}
-          
-          <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Box>
-              <TextField
-                data-testid="name-input"
-                fullWidth
-                label="Name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                error={!!validationErrors.name}
-                helperText={validationErrors.name}
-              />
-            </Box>
-            <Box>
-              <TextField
-                data-testid="sku-input"
-                fullWidth
-                label="SKU"
-                name="sku"
-                value={formData.sku}
-                onChange={handleInputChange}
-                error={!!validationErrors.sku}
-                helperText={validationErrors.sku}
-              />
-            </Box>
-            <Box>
-              <TextField
-                data-testid="description-input"
-                fullWidth
-                label="Description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                multiline
-                rows={3}
-                error={!!validationErrors.description}
-                helperText={validationErrors.description}
-              />
-            </Box>
-            <Box>
-              <TextField
-                data-testid="price-input"
-                fullWidth
-                label="Price"
-                name="price"
-                type="number"
-                value={formData.price}
-                onChange={handleInputChange}
-                error={!!validationErrors.price}
-                helperText={validationErrors.price}
-                InputProps={{
-                  startAdornment: <Typography>$</Typography>,
-                  inputProps: {
-                    min: 0.01,
-                    step: 0.01
-                  }
-                }}
-              />
-            </Box>
-
-            {isNewProduct ? (
+      {isModalMounted && (
+        <Dialog 
+          open={open} 
+          onClose={onClose} 
+          maxWidth="sm" 
+          fullWidth
+          fullScreen={fullScreen}
+          disablePortal={false}
+          keepMounted={false}
+          disableScrollLock={false}
+          aria-labelledby="product-edit-dialog-title"
+        >
+          <DialogTitle id="product-edit-dialog-title" data-testid="product-edit-modal-title">
+            {isNewProduct ? 'Create New Product' : 'Edit Product'}
+          </DialogTitle>
+          <DialogContent>
+            {error && (
+              <Box sx={{ mb: 2 }}>
+                <ErrorAlert 
+                  message={error} 
+                  severity="error" 
+                  sx={{ 
+                    whiteSpace: 'pre-line',
+                    '& .MuiAlert-message': {
+                      whiteSpace: 'pre-line'
+                    }
+                  }} 
+                />
+              </Box>
+            )}
+            
+            <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Box>
                 <TextField
-                  data-testid="initial-stock-input"
+                  data-testid="name-input"
                   fullWidth
-                  label="Initial Stock Quantity"
-                  name="initialStock"
-                  type="number"
-                  value={formData.initialStock}
+                  label="Name"
+                  name="name"
+                  value={formData.name}
                   onChange={handleInputChange}
-                  error={!!validationErrors.initialStock}
-                  helperText={validationErrors.initialStock}
+                  error={!!validationErrors.name}
+                  helperText={validationErrors.name}
+                />
+              </Box>
+              <Box>
+                <TextField
+                  data-testid="sku-input"
+                  fullWidth
+                  label="SKU"
+                  name="sku"
+                  value={formData.sku}
+                  onChange={handleInputChange}
+                  error={!!validationErrors.sku}
+                  helperText={validationErrors.sku}
+                />
+              </Box>
+              <Box>
+                <TextField
+                  data-testid="description-input"
+                  fullWidth
+                  label="Description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  multiline
+                  rows={3}
+                  error={!!validationErrors.description}
+                  helperText={validationErrors.description}
+                />
+              </Box>
+              <Box>
+                <TextField
+                  data-testid="price-input"
+                  fullWidth
+                  label="Price"
+                  name="price"
+                  type="number"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  error={!!validationErrors.price}
+                  helperText={validationErrors.price}
                   InputProps={{
+                    startAdornment: <Typography>$</Typography>,
                     inputProps: {
-                      min: 0,
-                      step: 1
+                      min: 0.01,
+                      step: 0.01
                     }
                   }}
                 />
               </Box>
-            ) : (
-              <Box>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Stock Management
-                </Typography>
-                <Box sx={{ mb: 4 }}>Use "+" or "-" to add or remove the defined quantity of this product stock.</Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <IconButton
-                    color="primary"
-                    onClick={() => handleStockChange('add')}
-                  >
-                    <AddIcon />
-                  </IconButton>
+
+              {isNewProduct ? (
+                <Box>
                   <TextField
-                    data-testid="stock-quantity-input"
-                    label="Quantity"
+                    data-testid="initial-stock-input"
+                    fullWidth
+                    label="Initial Stock Quantity"
+                    name="initialStock"
                     type="number"
-                    value={stockQuantity}
-                    onChange={handleStockQuantityChange}
+                    value={formData.initialStock}
+                    onChange={handleInputChange}
+                    error={!!validationErrors.initialStock}
+                    helperText={validationErrors.initialStock}
                     InputProps={{
                       inputProps: {
-                        min: 1,
+                        min: 0,
                         step: 1
                       }
                     }}
-                    size="small"
-                    sx={{ width: 100 }}
                   />
-                  <IconButton
-                    color="secondary"
-                    onClick={() => handleStockChange('remove')}
-                    disabled={currentStock < stockQuantity}
-                  >
-                    <RemoveIcon />
-                  </IconButton>
-                  <Typography>
-                    Current Stock: {currentStock}
-                  </Typography>
                 </Box>
-              </Box>
+              ) : (
+                <Box>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="h6" gutterBottom>
+                    Stock Management
+                  </Typography>
+                  <Box sx={{ mb: 4 }}>Use "+" or "-" to add or remove the defined quantity of this product stock.</Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <IconButton
+                      color="primary"
+                      onClick={() => handleStockChange('add')}
+                    >
+                      <AddIcon />
+                    </IconButton>
+                    <TextField
+                      data-testid="stock-quantity-input"
+                      label="Quantity"
+                      type="number"
+                      value={stockQuantity}
+                      onChange={handleStockQuantityChange}
+                      InputProps={{
+                        inputProps: {
+                          min: 1,
+                          step: 1
+                        }
+                      }}
+                      size="small"
+                      sx={{ width: 100 }}
+                    />
+                    <IconButton
+                      color="secondary"
+                      onClick={() => handleStockChange('remove')}
+                      disabled={currentStock < stockQuantity}
+                    >
+                      <RemoveIcon />
+                    </IconButton>
+                    <Typography>
+                      Current Stock: {currentStock}
+                    </Typography>
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            {!isNewProduct && (
+              <Button onClick={handleDeleteClick} color="error" data-testid="delete-btn">
+                Delete Product
+              </Button>
             )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          {!isNewProduct && (
-            <Button onClick={handleDeleteClick} color="error" data-testid="delete-btn">
-              Delete Product
+            <Button onClick={onClose} data-testid="edit-modal-cancel-btn">Cancel</Button>
+            <Button onClick={handleSave} color="primary" variant="contained" data-testid="save-btn">
+              {isNewProduct ? 'Create Product' : 'Save Changes'}
             </Button>
-          )}
-          <Button onClick={onClose} data-testid="edit-modal-cancel-btn">Cancel</Button>
-          <Button onClick={handleSave} color="primary" variant="contained" data-testid="save-btn">
-            {isNewProduct ? 'Create Product' : 'Save Changes'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </DialogActions>
+        </Dialog>
+      )}
 
-      {!isNewProduct && (
+      {deleteDialogOpen && (
         <DeleteConfirmationDialog
           open={deleteDialogOpen}
           onClose={() => setDeleteDialogOpen(false)}
