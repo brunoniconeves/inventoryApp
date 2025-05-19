@@ -8,6 +8,8 @@ A full-stack application for managing inventory with a React frontend and .NET C
 - `backend/` - .NET Core 8 Minimal API
 - `docker-compose.yml` - Docker configuration for all services
 
+![Application Architecture](otherAssets/projectArchitecture.png)
+
 ## Prerequisites
 
 - Docker and Docker Compose
