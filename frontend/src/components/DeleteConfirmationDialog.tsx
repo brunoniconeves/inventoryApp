@@ -41,7 +41,7 @@ export const DeleteConfirmationDialog: React.FC<DeleteConfirmationDialogProps> =
         <Button onClick={onClose} color="primary">
           Cancel
         </Button>
-        <Button onClick={onConfirm} color="error" autoFocus>
+        <Button onClick={onConfirm} color="error" autoFocus data-testid="confirm-delete-btn">
           Delete
         </Button>
       </DialogActions>

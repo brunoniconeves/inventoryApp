@@ -208,6 +208,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
           <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Box>
               <TextField
+                data-testid="name-input"
                 fullWidth
                 label="Name"
                 name="name"
@@ -219,6 +220,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
             </Box>
             <Box>
               <TextField
+                data-testid="sku-input"
                 fullWidth
                 label="SKU"
                 name="sku"
@@ -230,6 +232,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
             </Box>
             <Box>
               <TextField
+                data-testid="description-input"
                 fullWidth
                 label="Description"
                 name="description"
@@ -243,6 +246,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
             </Box>
             <Box>
               <TextField
+                data-testid="price-input"
                 fullWidth
                 label="Price"
                 name="price"
@@ -264,6 +268,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
             {isNewProduct ? (
               <Box>
                 <TextField
+                  data-testid="initial-stock-input"
                   fullWidth
                   label="Initial Stock Quantity"
                   name="initialStock"
@@ -295,6 +300,7 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
                     <AddIcon />
                   </IconButton>
                   <TextField
+                    data-testid="stock-quantity-input"
                     label="Quantity"
                     type="number"
                     value={stockQuantity}
@@ -325,12 +331,12 @@ export const ProductEditModal: React.FC<ProductEditModalProps> = ({
         </DialogContent>
         <DialogActions>
           {!isNewProduct && (
-            <Button onClick={handleDeleteClick} color="error">
+            <Button onClick={handleDeleteClick} color="error" data-testid="delete-btn">
               Delete Product
             </Button>
           )}
-          <Button onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} color="primary" variant="contained">
+          <Button onClick={onClose} data-testid="edit-modal-cancel-btn">Cancel</Button>
+          <Button onClick={handleSave} color="primary" variant="contained" data-testid="save-btn">
             {isNewProduct ? 'Create Product' : 'Save Changes'}
           </Button>
         </DialogActions>
