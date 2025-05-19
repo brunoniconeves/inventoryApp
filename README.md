@@ -83,6 +83,9 @@ yarn e2e          # Run E2E automated tests with Cypress
 yarn cypress open # Open Cypress UI to run the tests
 ```
 
+If you try to run yarn test and the command fails, run a yarn install first.
+It can happen that react-scripts or other dependencies are missing.
+
 ### Backend
 
 ```bash
