@@ -162,3 +162,33 @@ code organization.
   That way I could show more control of how to setup a project using a modern architecture with docker.
 
 - Decided to implement E2E tests that can automatize QA tests of the entire application that integrate Backend, Frontend and Database.
+
+## If we have more time, next steps:
+
+### Backend (.NET):
+API Key Validation:
+
+Generate an API key and require it to be sent in the headers of every request.
+Validate the API key on the backend.
+
+HTTPS:
+Enforce HTTPS to encrypt communication between the frontend and backend.
+
+Rate Limiting:
+Implement rate limiting to prevent abuse of the API.
+
+IP Whitelisting:
+Restrict access to the API by allowing only requests from the IP address of your frontend server.
+
+Frontend:
+Use Environment Variables:
+Store sensitive information like API keys in environment variables, not in the codebase.
+
+Obfuscate API Calls:
+Use a proxy server to hide direct API calls from the frontend.
+
+CSRF Protection:
+Implement CSRF tokens to prevent cross-site request forgery attacks.
+
+Validate Input:
+Sanitize and validate all user inputs before sending them to the backend.
