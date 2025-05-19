@@ -182,7 +182,7 @@ Implement rate limiting to prevent abuse of the API.
 IP Whitelisting:
 Restrict access to the API by allowing only requests from the IP address of your frontend server.
 
-Frontend:
+## Frontend:
 Use Environment Variables:
 Store sensitive information like API keys in environment variables, not in the codebase.
 
@@ -194,3 +194,11 @@ Implement CSRF tokens to prevent cross-site request forgery attacks.
 
 Validate Input:
 Sanitize and validate all user inputs before sending them to the backend.
+
+## Deployment
+
+Implement CI/CD pipelines using Github actions to deploy it to any desired place:
+- Azure
+- AWS
+- GCP 
+- Any other cloud/host service.
