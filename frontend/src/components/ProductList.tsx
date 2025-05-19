@@ -187,6 +187,20 @@ export const ProductList: React.FC = () => {
         </Typography>
         <Stack direction="row" spacing={1} alignItems="center">
           <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={handleRefresh}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              px: 3,
+              py: 1
+            }}
+            data-testid="refresh-products-button"
+          >
+            Refresh
+          </Button>
+          <Button
             variant="contained"
             color="success"
             startIcon={<AddIcon />}
