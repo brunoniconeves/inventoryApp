@@ -43,6 +43,29 @@ yarn install    # Install dependencies
 yarn start      # Start development server
 ```
 
+if you don't have yarn package manager installed you can do that:
+If you are using Node.js v16+, Yarn is included in Corepack
+```bash
+corepack enable
+corepack prepare yarn@stable --activate
+```
+
+You can also use Chocolatey or npm on Windows:
+```bash
+choco install yarn
+```
+
+Or
+
+```bash
+npm install -g yarn
+```
+
+Verify yarn installation with
+```bash
+yarn -v
+```
+
 For other common frontend commands:
 ```bash
 yarn build        # Create production build
