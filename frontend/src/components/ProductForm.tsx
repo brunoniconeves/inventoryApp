@@ -16,6 +16,7 @@ import { Add as AddIcon, Remove as RemoveIcon } from '@mui/icons-material';
 import { Product } from '../services/productService';
 import { useProducts } from '../contexts/ProductContext';
 import axios from 'axios';
+import { productService } from '../services/productService';
 
 interface ProductFormProps {
   product?: Product;
@@ -135,15 +136,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           stockQuantity: initialStock || 0,
         } as Omit<Product, 'id'>);
       } else if (product) {
-        // Only send changed fields
-        const changedFields = Object.entries(formData).reduce((acc, [key, value]) => {
-          if (product[key as keyof Product] !== value) {
-            acc[key] = value;
-          }
-          return acc;
-        }, {} as Record<string, any>);
-        
-        await updateProduct(product.id, changedFields);
+        // Send all form data fields except initialStock
+        const { initialStock, ...updateData } = formData;
+        await updateProduct(product.id, updateData);
       }
       setError(null);
       navigate('/');
@@ -183,6 +178,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         await removeStock(product.id, stockQuantity);
         setCurrentStock(prev => prev - stockQuantity);
       }
+
+      // Refresh the product data to ensure we have the latest stock quantity
+      const updatedProduct = await productService.getProduct(product.id);
+      setCurrentStock(updatedProduct.stockQuantity);
+      
       setError(null);
     } catch (err) {
       const backendError = getErrorMessage(err);
@@ -298,53 +298,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             />
           )}
 
-          {isNewProduct ? (
-            <Box>
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="h6" gutterBottom>
-                Stock Management
-              </Typography>
-              <Box sx={{ mb: 2 }}>
-                Use "+" or "-" to add or remove the defined quantity of this product stock.
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <IconButton
-                  color="primary"
-                  onClick={() => handleStockChange('add')}
-                  data-testid="add-stock-button"
-                >
-                  <AddIcon />
-                </IconButton>
-                <TextField
-                  data-testid="stock-quantity-input"
-                  label="Quantity"
-                  type="number"
-                  value={stockQuantity}
-                  onChange={handleStockQuantityChange}
-                  InputProps={{
-                    inputProps: {
-                      'data-testid': 'stock-quantity-input-field',
-                      min: 1,
-                      step: 1
-                    }
-                  }}
-                  size="small"
-                  sx={{ width: 100 }}
-                />
-                <IconButton
-                  color="secondary"
-                  onClick={() => handleStockChange('remove')}
-                  disabled={currentStock < stockQuantity}
-                  data-testid="remove-stock-button"
-                >
-                  <RemoveIcon />
-                </IconButton>
-                <Typography>
-                  Current Stock: {currentStock}
-                </Typography>
-              </Box>
-            </Box>
-          ) : (
+          {!isNewProduct && (
             <Box>
               <Divider sx={{ my: 2 }} />
               <Typography variant="h6" gutterBottom>
