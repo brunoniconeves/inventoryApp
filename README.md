@@ -31,6 +31,13 @@ The application will be available at:
 - Backend API: http://localhost:5000
 - PostgreSQL: localhost:5432
 
+NOTE: If you want to start with the initial data seed after some play, you can run:
+```bash
+docker compose down
+docker volume rm inventoryapp_postgres_data
+docker compose up -d
+```
+
 ## API
 To view and test all available endpoints please access:
 - http://localhost:5000/swagger
