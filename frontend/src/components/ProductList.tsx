@@ -232,6 +232,9 @@ export const ProductList: React.FC = () => {
           pagination: { paginationModel: { pageSize: 10 } },
         }}
         disableRowSelectionOnClick
+        disableVirtualization={process.env.NODE_ENV === 'test'}
+        hideFooterPagination={process.env.NODE_ENV === 'test'}
+        autoHeight={process.env.NODE_ENV === 'test'}
         sx={{
           '& .MuiDataGrid-columnHeaders': {
             backgroundColor: 'black',

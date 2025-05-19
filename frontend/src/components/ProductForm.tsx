@@ -83,9 +83,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    let parsedValue: string | number = value;
+    if (name === 'price' || name === 'initialStock') {
+      parsedValue = value === '' ? 0 : parseFloat(value);
+    }
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'price' || name === 'initialStock' ? parseFloat(value) : value
+      [name]: parsedValue
     }));
     // Clear validation error for the field being edited
     setValidationErrors(prev => ({
@@ -132,7 +136,15 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           stockQuantity: initialStock || 0,
         } as Omit<Product, 'id'>);
       } else if (product) {
-        await updateProduct(product.id, formData);
+        // Only send changed fields
+        const changedFields = Object.entries(formData).reduce((acc, [key, value]) => {
+          if (product[key as keyof Product] !== value) {
+            acc[key] = value;
+          }
+          return acc;
+        }, {} as Record<string, any>);
+        
+        await updateProduct(product.id, changedFields);
       }
       setError(null);
       navigate('/');
@@ -224,10 +236,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             fullWidth
             label="Name"
             name="name"
-            value={formData.name}
+            value={formData.name || ''}
             onChange={handleInputChange}
             error={!!validationErrors.name}
             helperText={validationErrors.name}
+            inputProps={{
+              'data-testid': 'name-input-field'
+            }}
           />
 
           <TextField
@@ -235,10 +250,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             fullWidth
             label="SKU"
             name="sku"
-            value={formData.sku}
+            value={formData.sku || ''}
             onChange={handleInputChange}
             error={!!validationErrors.sku}
             helperText={validationErrors.sku}
+            inputProps={{
+              'data-testid': 'sku-input-field'
+            }}
           />
 
           <TextField
@@ -246,12 +264,15 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             fullWidth
             label="Description"
             name="description"
-            value={formData.description}
+            value={formData.description || ''}
             onChange={handleInputChange}
             multiline
             rows={3}
             error={!!validationErrors.description}
             helperText={validationErrors.description}
+            inputProps={{
+              'data-testid': 'description-input-field'
+            }}
           />
 
           <TextField
@@ -260,37 +281,85 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             label="Price"
             name="price"
             type="number"
-            value={formData.price}
+            value={formData.price || ''}
             onChange={handleInputChange}
             error={!!validationErrors.price}
             helperText={validationErrors.price}
             InputProps={{
               startAdornment: <Typography>$</Typography>,
               inputProps: {
+                'data-testid': 'price-input-field',
                 min: 0.01,
                 step: 0.01
               }
             }}
           />
 
-          {isNewProduct ? (
+          {isNewProduct && (
             <TextField
               data-testid="initial-stock-input"
               fullWidth
               label="Initial Stock Quantity"
               name="initialStock"
               type="number"
-              value={formData.initialStock}
+              value={formData.initialStock ?? ''}
               onChange={handleInputChange}
               error={!!validationErrors.initialStock}
               helperText={validationErrors.initialStock}
-              InputProps={{
-                inputProps: {
-                  min: 0,
-                  step: 1
-                }
+              inputProps={{
+                'data-testid': 'initial-stock-input-field',
+                min: 0,
+                step: 1
               }}
             />
+          )}
+
+          {isNewProduct ? (
+            <Box>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="h6" gutterBottom>
+                Stock Management
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                Use "+" or "-" to add or remove the defined quantity of this product stock.
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <IconButton
+                  color="primary"
+                  onClick={() => handleStockChange('add')}
+                  data-testid="add-stock-button"
+                >
+                  <AddIcon />
+                </IconButton>
+                <TextField
+                  data-testid="stock-quantity-input"
+                  label="Quantity"
+                  type="number"
+                  value={stockQuantity}
+                  onChange={handleStockQuantityChange}
+                  InputProps={{
+                    inputProps: {
+                      'data-testid': 'stock-quantity-input-field',
+                      min: 1,
+                      step: 1
+                    }
+                  }}
+                  size="small"
+                  sx={{ width: 100 }}
+                />
+                <IconButton
+                  color="secondary"
+                  onClick={() => handleStockChange('remove')}
+                  disabled={currentStock < stockQuantity}
+                  data-testid="remove-stock-button"
+                >
+                  <RemoveIcon />
+                </IconButton>
+                <Typography>
+                  Current Stock: {currentStock}
+                </Typography>
+              </Box>
+            </Box>
           ) : (
             <Box>
               <Divider sx={{ my: 2 }} />
@@ -304,6 +373,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                 <IconButton
                   color="primary"
                   onClick={() => handleStockChange('add')}
+                  data-testid="add-stock-button"
                 >
                   <AddIcon />
                 </IconButton>
@@ -315,6 +385,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                   onChange={handleStockQuantityChange}
                   InputProps={{
                     inputProps: {
+                      'data-testid': 'stock-quantity-input-field',
                       min: 1,
                       step: 1
                     }
@@ -326,6 +397,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                   color="secondary"
                   onClick={() => handleStockChange('remove')}
                   disabled={currentStock < stockQuantity}
+                  data-testid="remove-stock-button"
                 >
                   <RemoveIcon />
                 </IconButton>
