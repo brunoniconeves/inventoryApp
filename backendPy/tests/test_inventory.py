@@ -1,42 +1,27 @@
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 import pytest
 from app.main import app
-from app.database import Base, get_db
+from app.models import Product, Inventory
+from app.database import Base, init_db
 
-# Create in-memory SQLite database for testing
-SQLALCHEMY_DATABASE_URL = "sqlite://"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
-@pytest.fixture
-def client():
+@pytest.fixture(scope="function")
+def test_product(client, db_session):
+    # Initialize database
+    engine = init_db("sqlite:///:memory:")
     Base.metadata.create_all(bind=engine)
-    yield TestClient(app)
-    Base.metadata.drop_all(bind=engine)
-
-@pytest.fixture
-def test_product(client):
+    
+    # Create product
     response = client.post(
         "/api/products/",
         json={"name": "Test Product", "description": "Test Description", "price": 99.99}
     )
-    return response.json()
+    product_data = response.json()
+    
+    # Create inventory record
+    inventory = Inventory(product_id=product_data["id"], quantity=0)
+    db_session.add(inventory)
+    db_session.commit()
+    
+    return product_data
 
 def test_get_product_inventory(client, test_product):
     response = client.get(f"/api/inventory/products/{test_product['id']}")
@@ -85,4 +70,4 @@ def test_remove_too_much_stock(client, test_product):
         json={"quantity": 15}
     )
     assert response.status_code == 400
-    assert "Not enough stock available" in response.json()["detail"] 
+    assert "Not enough stock available" in response.json()["detail"]

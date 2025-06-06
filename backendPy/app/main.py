@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import products, inventory
-from app.database import engine, Base, SessionLocal
+from app.database import Base, SessionLocal, init_db
 from app.seed import seed_database
 from sqlalchemy import text
 import time
@@ -13,6 +13,9 @@ async def lifespan(app: FastAPI):
     # Setup - wait for database
     max_retries = 5
     retry_delay = 5  # seconds
+
+    # Initialize the database
+    engine = init_db()
 
     for retry in range(max_retries):
         try:
