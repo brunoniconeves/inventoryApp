@@ -1,0 +1,22 @@
+# Development Dockerfile for Angular with hot reload
+FROM node:20-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Expose port for Angular dev server
+EXPOSE 4200
+
+# Start Angular development server with hot reload
+# Bind to 0.0.0.0 to make it accessible from outside the container
+# Use polling for file watching in Docker environment
+CMD ["npm", "run", "start", "--", "--host", "0.0.0.0", "--poll", "2000"]

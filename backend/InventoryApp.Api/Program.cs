@@ -27,7 +27,10 @@ public partial class Program
         {
             options.AddDefaultPolicy(policy =>
             {
-                policy.WithOrigins("http://localhost:3000")
+                policy.WithOrigins(
+                        "http://localhost:3000",  // React frontend
+                        "http://localhost:4200"   // Angular frontend
+                    )
                     .AllowAnyHeader()
                     .AllowAnyMethod();
             });

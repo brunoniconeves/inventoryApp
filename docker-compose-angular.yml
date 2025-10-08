@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  frontend-angular:
+    build:
+      context: ./frontend-angular
+      dockerfile: Dockerfile
+    ports:
+      - "4201:80"
+    depends_on:
+      - backend
+    environment:
+      - API_URL=http://localhost:5000
+    profiles:
+      - prod
+
+  frontend-angular-dev:
+    build:
+      context: ./frontend-angular
+      dockerfile: Dockerfile.dev
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./frontend-angular:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    environment:
+      - API_URL=http://localhost:5000
+    profiles:
+      - dev
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000
+    depends_on:
+      - db
+
+  db:
+    image: postgres:latest
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=inventorydb
+    volumes:
+      - postgres_data_angular:/var/lib/postgresql/data
+
+volumes:
+  postgres_data_angular:
+
